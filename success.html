@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Order Confirmed | Ushoti Style</title>
+  <link rel="stylesheet" href="style.css"/>
+</head>
+<body>
+
+  <nav>
+    <a href="index.html" class="logo">Ushoti Style</a>
+    <div class="nav-links">
+      <a href="index.html">Home</a>
+      <a href="products.html">Collections</a>
+      <a href="cart.html" class="cart-link">
+        <svg viewBox="0 0 24 24"><path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 01-8 0"/></svg>
+        <span>Cart</span>
+        <span class="cart-count">0</span>
+      </a>
+    </div>
+  </nav>
+
+  <div class="success-container">
+    <svg class="success-icon" viewBox="0 0 64 64">
+      <circle cx="32" cy="32" r="30"/>
+      <polyline points="20 33 28 41 44 25" stroke-linecap="round" stroke-linejoin="round"/>
+    </svg>
+    <p class="section-label">Payment Successful</p>
+    <h2>Order Confirmed</h2>
+    <p style="margin-top:1rem;">Thank you for shopping with <span style="color:var(--gold)">Ushoti Style</span>.</p>
+    <p>A confirmation has been sent to your email address. Your order will be dispatched within 1–2 business days.</p>
+    <a href="products.html" class="btn" style="margin-top:2rem;">Continue Shopping</a>
+  </div>
+
+  <footer>
+    <div class="footer-inner">
+      <div class="footer-brand">
+        <a href="index.html" class="logo">Ushoti Style</a>
+        <p>Premium sneakers and hair, delivered with care across South Africa.</p>
+      </div>
+      <div class="footer-col">
+        <h5>Shop</h5>
+        <a href="products.html#sneakers">Sneakers</a>
+        <a href="products.html#hair">Hair</a>
+      </div>
+      <div class="footer-col">
+        <h5>Information</h5>
+        <a href="#">Shipping Policy</a>
+        <a href="#">Returns &amp; Exchanges</a>
+        <a href="#">Contact Us</a>
+      </div>
+    </div>
+    <div class="footer-bottom">
+      <p>&copy; 2025 <span>Ushoti Style</span>. All rights reserved.</p>
+      <p>Proudly South African</p>
+    </div>
+  </footer>
+
+  <script src="app.js"></script>
+  <script>
+    localStorage.removeItem('ushoti_cart');
+  </script>
+</body>
+</html>

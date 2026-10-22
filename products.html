@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Collections | Ushoti Style</title>
+  <link rel="stylesheet" href="style.css"/>
+</head>
+<body>
+
+  <nav>
+    <a href="index.html" class="logo">Ushoti Style</a>
+    <div class="nav-links">
+      <a href="index.html">Home</a>
+      <a href="products.html">Collections</a>
+      <a href="cart.html" class="cart-link">
+        <svg viewBox="0 0 24 24"><path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 01-8 0"/></svg>
+        <span>Cart</span>
+        <span class="cart-count">0</span>
+      </a>
+    </div>
+  </nav>
+
+  <!-- Sneakers -->
+  <div class="section" id="sneakers">
+    <p class="section-label">Footwear</p>
+    <h2 class="section-title">Sneakers</h2>
+    <div class="section-divider"></div>
+    <div class="product-grid">
+
+      <div class="product-card">
+        <div class="product-card-img">
+          <img src="https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=400&h=260&fit=crop" alt="Air Force 1 White"/>
+          <span class="product-badge">Classic</span>
+        </div>
+        <div class="product-info">
+          <h3>Air Force 1 White</h3>
+          <div class="price">R1,299</div>
+          <button class="btn" onclick="addToCart('snk1','Air Force 1 White',1299,'https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=80&h=80&fit=crop')">Add to Cart</button>
+        </div>
+      </div>
+
+      <div class="product-card">
+        <div class="product-card-img">
+          <img src="https://images.unsplash.com/photo-1600185365483-26d7a4cc7519?w=400&h=260&fit=crop" alt="Jordan 1 Retro High"/>
+          <span class="product-badge">Premium</span>
+        </div>
+        <div class="product-info">
+          <h3>Jordan 1 Retro High</h3>
+          <div class="price">R2,499</div>
+          <button class="btn" onclick="addToCart('snk2','Jordan 1 Retro High',2499,'https://images.unsplash.com/photo-1600185365483-26d7a4cc7519?w=80&h=80&fit=crop')">Add to Cart</button>
+        </div>
+      </div>
+
+      <div class="product-card">
+        <div class="product-card-img">
+          <img src="https://images.unsplash.com/photo-1608231387042-66d1773070a5?w=400&h=260&fit=crop" alt="Yeezy Boost 350"/>
+          <span class="product-badge">Limited</span>
+        </div>
+        <div class="product-info">
+          <h3>Yeezy Boost 350</h3>
+          <div class="price">R3,199</div>
+          <button class="btn" onclick="addToCart('snk3','Yeezy Boost 350',3199,'https://images.unsplash.com/photo-1608231387042-66d1773070a5?w=80&h=80&fit=crop')">Add to Cart</button>
+        </div>
+      </div>
+
+      <div class="product-card">
+        <div class="product-card-img">
+          <img src="https://images.unsplash.com/photo-1595950653106-6c9ebd614d3a?w=400&h=260&fit=crop" alt="Nike Dunk Low"/>
+        </div>
+        <div class="product-info">
+          <h3>Nike Dunk Low</h3>
+          <div class="price">R1,599</div>
+          <button class="btn" onclick="addToCart('snk4','Nike Dunk Low',1599,'https://images.unsplash.com/photo-1595950653106-6c9ebd614d3a?w=80&h=80&fit=crop')">Add to Cart</button>
+        </div>
+      </div>
+
+      <div class="product-card">
+        <div class="product-card-img">
+          <img src="https://images.unsplash.com/photo-1584735175315-9d5df23be620?w=400&h=260&fit=crop" alt="Adidas Superstar OG"/>
+        </div>
+        <div class="product-info">
+          <h3>Adidas Superstar OG</h3>
+          <div class="price">R1,450</div>
+          <button class="btn" onclick="addToCart('snk5','Adidas Superstar OG',1450,'https://images.unsplash.com/photo-1584735175315-9d5df23be620?w=80&h=80&fit=crop')">Add to Cart</button>
+        </div>
+      </div>
+
+      <div class="product-card">
+        <div class="product-card-img">
+          <img src="https://images.unsplash.com/photo-1556906781-9a412961a28c?w=400&h=260&fit=crop" alt="Puma Suede Classic"/>
+        </div>
+        <div class="product-info">
+          <h3>Puma Suede Classic</h3>
+          <div class="price">R1,099</div>
+          <button class="btn" onclick="addToCart('snk6','Puma Suede Classic',1099,'https://images.unsplash.com/photo-1556906781-9a412961a28c?w=80&h=80&fit=crop')">Add to Cart</button>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- Hair -->
+  <div class="section" id="hair">
+    <p class="section-label">Hair</p>
+    <h2 class="section-title">Extensions &amp; Wigs</h2>
+    <div class="section-divider"></div>
+    <div class="product-grid">
+
+      <div class="product-card">
+        <div class="product-card-img">
+          <img src="https://images.unsplash.com/photo-1522337360788-8b13dee7a37e?w=400&h=260&fit=crop" alt="Body Wave Wig 18 inch"/>
+          <span class="product-badge">Bestseller</span>
+        </div>
+        <div class="product-info">
+          <h3>Body Wave Wig 18"</h3>
+          <div class="price">R1,850</div>
+          <button class="btn" onclick="addToCart('hr1','Body Wave Wig 18&quot;',1850,'https://images.unsplash.com/photo-1522337360788-8b13dee7a37e?w=80&h=80&fit=crop')">Add to Cart</button>
+        </div>
+      </div>
+
+      <div class="product-card">
+        <div class="product-card-img">
+          <img src="https://images.unsplash.com/photo-1560869713-7d0a29430803?w=400&h=260&fit=crop" alt="Straight Bundles 3pcs"/>
+        </div>
+        <div class="product-info">
+          <h3>Straight Bundles 3pcs</h3>
+          <div class="price">R2,200</div>
+          <button class="btn" onclick="addToCart('hr2','Straight Bundles 3pcs',2200,'https://images.unsplash.com/photo-1560869713-7d0a29430803?w=80&h=80&fit=crop')">Add to Cart</button>
+        </div>
+      </div>
+
+      <div class="product-card">
+        <div class="product-card-img">
+          <img src="https://images.unsplash.com/photo-1595476108010-b4d1f102b1b1?w=400&h=260&fit=crop" alt="Curly Lace Front Wig"/>
+          <span class="product-badge">Premium</span>
+        </div>
+        <div class="product-info">
+          <h3>Curly Lace Front Wig</h3>
+          <div class="price">R2,750</div>
+          <button class="btn" onclick="addToCart('hr3','Curly Lace Front Wig',2750,'https://images.unsplash.com/photo-1595476108010-b4d1f102b1b1?w=80&h=80&fit=crop')">Add to Cart</button>
+        </div>
+      </div>
+
+      <div class="product-card">
+        <div class="product-card-img">
+          <img src="https://images.unsplash.com/photo-1519699047748-de8e457a634e?w=400&h=260&fit=crop" alt="4x4 Lace Closure"/>
+        </div>
+        <div class="product-info">
+          <h3>4x4 Lace Closure</h3>
+          <div class="price">R950</div>
+          <button class="btn" onclick="addToCart('hr4','4x4 Lace Closure',950,'https://images.unsplash.com/photo-1519699047748-de8e457a634e?w=80&h=80&fit=crop')">Add to Cart</button>
+        </div>
+      </div>
+
+      <div class="product-card">
+        <div class="product-card-img">
+          <img src="https://images.unsplash.com/photo-1580618672591-eb180b1a973f?w=400&h=260&fit=crop" alt="Deep Wave Bundles 2pcs"/>
+        </div>
+        <div class="product-info">
+          <h3>Deep Wave Bundles 2pcs</h3>
+          <div class="price">R1,700</div>
+          <button class="btn" onclick="addToCart('hr5','Deep Wave Bundles 2pcs',1700,'https://images.unsplash.com/photo-1580618672591-eb180b1a973f?w=80&h=80&fit=crop')">Add to Cart</button>
+        </div>
+      </div>
+
+      <div class="product-card">
+        <div class="product-card-img">
+          <img src="https://images.unsplash.com/photo-1526045612212-70caf35c14df?w=400&h=260&fit=crop" alt="Short Bob Wig"/>
+        </div>
+        <div class="product-info">
+          <h3>Short Bob Wig</h3>
+          <div class="price">R1,350</div>
+          <button class="btn" onclick="addToCart('hr6','Short Bob Wig',1350,'https://images.unsplash.com/photo-1526045612212-70caf35c14df?w=80&h=80&fit=crop')">Add to Cart</button>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <footer>
+    <div class="footer-inner">
+      <div class="footer-brand">
+        <a href="index.html" class="logo">Ushoti Style</a>
+        <p>Premium sneakers and hair, delivered with care across South Africa. Style is not a luxury — it is a standard.</p>
+      </div>
+      <div class="footer-col">
+        <h5>Shop</h5>
+        <a href="products.html#sneakers">Sneakers</a>
+        <a href="products.html#hair">Hair</a>
+        <a href="cart.html">My Cart</a>
+      </div>
+      <div class="footer-col">
+        <h5>Information</h5>
+        <a href="#">Shipping Policy</a>
+        <a href="#">Returns &amp; Exchanges</a>
+        <a href="#">Privacy Policy</a>
+        <a href="#">Contact Us</a>
+      </div>
+    </div>
+    <div class="footer-bottom">
+      <p>&copy; 2025 <span>Ushoti Style</span>. All rights reserved.</p>
+      <p>Proudly South African</p>
+    </div>
+  </footer>
+
+  <script src="app.js"></script>
+</body>
+</html>
