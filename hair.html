@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Hair | Ushoti Style</title>
+  <link rel="stylesheet" href="style.css"/>
+  <style>
+    .product-card { cursor: pointer; }
+  </style>
+</head>
+<body>
+
+  <nav>
+    <a href="index.html" class="logo">Ushoti Style</a>
+    <div class="nav-links">
+      <a href="index.html">Home</a>
+      <a href="products.html">Collections</a>
+      <a href="cart.html" class="cart-link">
+        <svg viewBox="0 0 24 24"><path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 01-8 0"/></svg>
+        <span>Cart</span>
+        <span class="cart-count">0</span>
+      </a>
+    </div>
+  </nav>
+
+  <div class="section" id="hair">
+    <p class="section-label">Hair</p>
+    <h2 class="section-title">Extensions &amp; Wigs</h2>
+    <div class="section-divider"></div>
+    <div class="product-grid">
+
+      <div class="product-card" onclick="openHairModal('hr1')">
+        <div class="product-card-img">
+          <img src="https://images.unsplash.com/photo-1522337360788-8b13dee7a37e?w=400&h=260&fit=crop" alt="Body Wave Wig 18 inch"/>
+          <span class="product-badge">Bestseller</span>
+        </div>
+        <div class="product-info">
+          <h3>Body Wave Wig 18"</h3>
+          <div class="price">R1,850</div>
+        </div>
+      </div>
+
+      <div class="product-card" onclick="openHairModal('hr2')">
+        <div class="product-card-img">
+          <img src="https://images.unsplash.com/photo-1560869713-7d0a29430803?w=400&h=260&fit=crop" alt="Straight Bundles 3pcs"/>
+        </div>
+        <div class="product-info">
+          <h3>Straight Bundles 3pcs</h3>
+          <div class="price">R2,200</div>
+        </div>
+      </div>
+
+      <div class="product-card" onclick="openHairModal('hr3')">
+        <div class="product-card-img">
+          <img src="https://images.unsplash.com/photo-1595476108010-b4d1f102b1b1?w=400&h=260&fit=crop" alt="Curly Lace Front Wig"/>
+          <span class="product-badge">Premium</span>
+        </div>
+        <div class="product-info">
+          <h3>Curly Lace Front Wig</h3>
+          <div class="price">R2,750</div>
+        </div>
+      </div>
+
+      <div class="product-card" onclick="openHairModal('hr4')">
+        <div class="product-card-img">
+          <img src="https://images.unsplash.com/photo-1519699047748-de8e457a634e?w=400&h=260&fit=crop" alt="4x4 Lace Closure"/>
+        </div>
+        <div class="product-info">
+          <h3>4x4 Lace Closure</h3>
+          <div class="price">R950</div>
+        </div>
+      </div>
+
+      <div class="product-card" onclick="openHairModal('hr5')">
+        <div class="product-card-img">
+          <img src="https://images.unsplash.com/photo-1580618672591-eb180b1a973f?w=400&h=260&fit=crop" alt="Deep Wave Bundles 2pcs"/>
+        </div>
+        <div class="product-info">
+          <h3>Deep Wave Bundles 2pcs</h3>
+          <div class="price">R1,700</div>
+        </div>
+      </div>
+
+      <div class="product-card" onclick="openHairModal('hr6')">
+        <div class="product-card-img">
+          <img src="https://images.unsplash.com/photo-1526045612212-70caf35c14df?w=400&h=260&fit=crop" alt="Short Bob Wig"/>
+        </div>
+        <div class="product-info">
+          <h3>Short Bob Wig</h3>
+          <div class="price">R1,350</div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <footer>
+    <div class="footer-inner">
+      <div class="footer-brand">
+        <a href="index.html" class="logo">Ushoti Style</a>
+        <p>Premium sneakers and hair, delivered with care across South Africa. Style is not a luxury — it is a standard.</p>
+      </div>
+      <div class="footer-col">
+        <h5>Shop</h5>
+        <a href="sneakers.html">Sneakers</a>
+        <a href="hair.html">Hair</a>
+        <a href="cart.html">My Cart</a>
+      </div>
+      <div class="footer-col">
+        <h5>Information</h5>
+        <a href="#">Shipping Policy</a>
+        <a href="#">Returns &amp; Exchanges</a>
+        <a href="#">Privacy Policy</a>
+        <a href="#">Contact Us</a>
+      </div>
+    </div>
+    <div class="footer-bottom">
+      <p>&copy; 2025 <span>Ushoti Style</span>. All rights reserved.</p>
+      <p>Proudly South African</p>
+    </div>
+  </footer>
+
+  <script src="app.js"></script>
+</body>
+</html>

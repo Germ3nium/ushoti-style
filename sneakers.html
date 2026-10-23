@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Sneakers | Ushoti Style</title>
+  <link rel="stylesheet" href="style.css"/>
+  <style>
+    .product-card { cursor: pointer; }
+  </style>
+</head>
+<body>
+
+  <nav>
+    <a href="index.html" class="logo">Ushoti Style</a>
+    <div class="nav-links">
+      <a href="index.html">Home</a>
+      <a href="products.html">Collections</a>
+      <a href="cart.html" class="cart-link">
+        <svg viewBox="0 0 24 24"><path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 01-8 0"/></svg>
+        <span>Cart</span>
+        <span class="cart-count">0</span>
+      </a>
+    </div>
+  </nav>
+
+  <div class="section" id="sneakers">
+    <p class="section-label">Footwear</p>
+    <h2 class="section-title">Sneakers</h2>
+    <div class="section-divider"></div>
+    <div class="product-grid">
+
+      <div class="product-card" onclick="openSneakerModal('snk1')">
+        <div class="product-card-img">
+          <img src="https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=400&h=260&fit=crop" alt="Air Force 1 White"/>
+          <span class="product-badge">Classic</span>
+        </div>
+        <div class="product-info">
+          <h3>Air Force 1 White</h3>
+          <div class="price">R1,299</div>
+        </div>
+      </div>
+
+      <div class="product-card" onclick="openSneakerModal('snk2')">
+        <div class="product-card-img">
+          <img src="https://images.unsplash.com/photo-1600185365483-26d7a4cc7519?w=400&h=260&fit=crop" alt="Jordan 1 Retro High"/>
+          <span class="product-badge">Premium</span>
+        </div>
+        <div class="product-info">
+          <h3>Jordan 1 Retro High</h3>
+          <div class="price">R2,499</div>
+        </div>
+      </div>
+
+      <div class="product-card" onclick="openSneakerModal('snk3')">
+        <div class="product-card-img">
+          <img src="https://images.unsplash.com/photo-1608231387042-66d1773070a5?w=400&h=260&fit=crop" alt="Yeezy Boost 350"/>
+          <span class="product-badge">Limited</span>
+        </div>
+        <div class="product-info">
+          <h3>Yeezy Boost 350</h3>
+          <div class="price">R3,199</div>
+        </div>
+      </div>
+
+      <div class="product-card" onclick="openSneakerModal('snk4')">
+        <div class="product-card-img">
+          <img src="https://images.unsplash.com/photo-1595950653106-6c9ebd614d3a?w=400&h=260&fit=crop" alt="Nike Dunk Low"/>
+        </div>
+        <div class="product-info">
+          <h3>Nike Dunk Low</h3>
+          <div class="price">R1,599</div>
+        </div>
+      </div>
+
+      <div class="product-card" onclick="openSneakerModal('snk5')">
+        <div class="product-card-img">
+          <img src="https://images.unsplash.com/photo-1584735175315-9d5df23be620?w=400&h=260&fit=crop" alt="Adidas Superstar OG"/>
+        </div>
+        <div class="product-info">
+          <h3>Adidas Superstar OG</h3>
+          <div class="price">R1,450</div>
+        </div>
+      </div>
+
+      <div class="product-card" onclick="openSneakerModal('snk6')">
+        <div class="product-card-img">
+          <img src="https://images.unsplash.com/photo-1556906781-9a412961a28c?w=400&h=260&fit=crop" alt="Puma Suede Classic"/>
+        </div>
+        <div class="product-info">
+          <h3>Puma Suede Classic</h3>
+          <div class="price">R1,099</div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <footer>
+    <div class="footer-inner">
+      <div class="footer-brand">
+        <a href="index.html" class="logo">Ushoti Style</a>
+        <p>Premium sneakers and hair, delivered with care across South Africa. Style is not a luxury — it is a standard.</p>
+      </div>
+      <div class="footer-col">
+        <h5>Shop</h5>
+        <a href="sneakers.html">Sneakers</a>
+        <a href="hair.html">Hair</a>
+        <a href="cart.html">My Cart</a>
+      </div>
+      <div class="footer-col">
+        <h5>Information</h5>
+        <a href="#">Shipping Policy</a>
+        <a href="#">Returns &amp; Exchanges</a>
+        <a href="#">Privacy Policy</a>
+        <a href="#">Contact Us</a>
+      </div>
+    </div>
+    <div class="footer-bottom">
+      <p>&copy; 2025 <span>Ushoti Style</span>. All rights reserved.</p>
+      <p>Proudly South African</p>
+    </div>
+  </footer>
+
+  <script src="app.js"></script>
+</body>
+</html>
