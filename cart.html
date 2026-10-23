@@ -8,12 +8,48 @@
 </head>
 <body>
 
+  <div class="sidebar-overlay" id="sidebar-overlay">
+    <div class="sidebar">
+      <div class="sidebar-header">
+        <span>Shop by Category</span>
+        <button class="sidebar-close" onclick="closeSidebar()">&times;</button>
+      </div>
+      <div class="sidebar-section open">
+        <button class="sidebar-section-toggle" onclick="toggleSidebarSection(this)">
+          Sneakers
+          <svg viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"/></svg>
+        </button>
+        <div class="sidebar-links">
+          <a href="sneakers.html">View All Sneakers</a>
+          <a href="sneakers.html" class="promo">New Arrivals</a>
+          <a href="sneakers.html" class="promo">On Sale</a>
+        </div>
+      </div>
+      <div class="sidebar-section">
+        <button class="sidebar-section-toggle" onclick="toggleSidebarSection(this)">
+          Hair
+          <svg viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"/></svg>
+        </button>
+        <div class="sidebar-links">
+          <a href="hair.html">View All Hair</a>
+          <a href="hair.html" class="promo">New Arrivals</a>
+          <a href="hair.html" class="promo">On Sale</a>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <nav>
-    <a href="index.html" class="logo">Ushoti Style</a>
+    <div class="nav-left">
+      <button class="sidebar-menu-btn" onclick="openSidebar()" aria-label="Open menu">
+        <svg viewBox="0 0 24 24"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+      </button>
+      <a href="index.html" class="logo">Ushoti Style</a>
+    </div>
     <div class="nav-links">
       <a href="index.html">Home</a>
       <a href="products.html">Collections</a>
-      <a href="cart.html" class="cart-link">
+      <a href="cart.html" class="cart-link active">
         <svg viewBox="0 0 24 24"><path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 01-8 0"/></svg>
         <span>Cart</span>
         <span class="cart-count">0</span>

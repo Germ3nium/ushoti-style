@@ -1,3 +1,21 @@
+// ── Sidebar ──────────────────────────────────────────────
+function openSidebar() {
+  document.getElementById('sidebar-overlay').classList.add('open');
+}
+
+function closeSidebar() {
+  document.getElementById('sidebar-overlay').classList.remove('open');
+}
+
+function toggleSidebarSection(btn) {
+  btn.closest('.sidebar-section').classList.toggle('open');
+}
+
+document.addEventListener('click', e => {
+  const overlay = document.getElementById('sidebar-overlay');
+  if (overlay && e.target === overlay) closeSidebar();
+});
+
 // ── Hair Modal ──────────────────────────────────────────────
 const hairData = {
   hr1: { name: 'Body Wave Wig 18"',     price: 1850, badge: 'Bestseller', img: 'https://images.unsplash.com/photo-1522337360788-8b13dee7a37e?w=600&h=500&fit=crop', inches: [10,12,14,16,18,20,22,24], desc: 'Soft, natural-looking body waves with a silky finish. Full lace construction for a seamless hairline. Perfect for everyday wear or special occasions.' },
