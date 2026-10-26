@@ -1,0 +1,9 @@
+// Storefront: static site served from ./frontend.
+// The backend API is a separate Worker — see backend/wrangler.toml.
+{
+  "name": "ushoti-style",
+  "compatibility_date": "2026-10-01",
+  "assets": {
+    "directory": "./frontend"
+  }
+}

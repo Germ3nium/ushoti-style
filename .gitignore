@@ -1,3 +1,4 @@
-wrangler.toml
-worker.js
-schema.sql
+# Wrangler local state and dev secrets
+.wrangler/
+.dev.vars
+node_modules/

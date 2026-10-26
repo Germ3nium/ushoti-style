@@ -92,12 +92,12 @@ function openHairModal(id) {
 
 // ── Sneaker Modal ────────────────────────────────────────────
 const sneakerData = {
-  snk1: { name: 'Air Force 1 White',    price: 1299, badge: 'Classic', img: 'https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=600&h=500&fit=crop', colours: ['#ffffff','#000000','#c8a96e','#b0c4de'] },
-  snk2: { name: 'Jordan 1 Retro High',  price: 2499, badge: 'Premium', img: 'https://images.unsplash.com/photo-1600185365483-26d7a4cc7519?w=600&h=500&fit=crop', colours: ['#cc2200','#000000','#ffffff','#1a3a6b'] },
-  snk3: { name: 'Yeezy Boost 350',      price: 3199, badge: 'Limited', img: 'https://images.unsplash.com/photo-1608231387042-66d1773070a5?w=600&h=500&fit=crop', colours: ['#c8b89a','#3d3d3d','#000000','#f5f0e8'] },
-  snk4: { name: 'Nike Dunk Low',        price: 1599, badge: '',        img: 'https://images.unsplash.com/photo-1595950653106-6c9ebd614d3a?w=600&h=500&fit=crop', colours: ['#ffffff','#2e5e2e','#8b0000','#000000'] },
-  snk5: { name: 'Adidas Superstar OG',  price: 1450, badge: '',        img: 'https://images.unsplash.com/photo-1584735175315-9d5df23be620?w=600&h=500&fit=crop', colours: ['#ffffff','#000000','#c8a96e'] },
-  snk6: { name: 'Puma Suede Classic',   price: 1099, badge: '',        img: 'https://images.unsplash.com/photo-1556906781-9a412961a28c?w=600&h=500&fit=crop', colours: ['#1a1a6b','#cc2200','#2e5e2e','#000000','#c8a96e'] },
+  snk1: { name: 'Air Force 1 White',    price: 1299, badge: 'Classic', desc: 'The iconic low-top silhouette featuring crisp leather, encapsulated Air cushioning, and timeless street style.', img: 'https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=600&h=500&fit=crop', colours: ['#ffffff','#000000','#c8a96e','#b0c4de'] },
+  snk2: { name: 'Jordan 1 Retro High',  price: 2499, badge: 'Premium', desc: 'Court heritage silhouette with premium full-grain leather, padded ankle support, and unmistakable Wings branding.', img: 'https://images.unsplash.com/photo-1600185365483-26d7a4cc7519?w=600&h=500&fit=crop', colours: ['#cc2200','#000000','#ffffff','#1a3a6b'] },
+  snk3: { name: 'Yeezy Boost 350',      price: 3199, badge: 'Limited', desc: 'Sleek re-engineered Primeknit upper fitted with full-length adidas Boost technology for supreme cloud-like cushioning.', img: 'https://images.unsplash.com/photo-1608231387042-66d1773070a5?w=600&h=500&fit=crop', colours: ['#c8b89a','#3d3d3d','#000000','#f5f0e8'] },
+  snk4: { name: 'Nike Dunk Low',        price: 1599, badge: '',        desc: 'Vintage collegiate styling with clean leather overlays, a low-cut padded collar, and durable rubber cupsole.', img: 'https://images.unsplash.com/photo-1595950653106-6c9ebd614d3a?w=600&h=500&fit=crop', colours: ['#ffffff','#2e5e2e','#8b0000','#000000'] },
+  snk5: { name: 'Adidas Superstar OG',  price: 1450, badge: '',        desc: 'The original shell-toe legend featuring smooth coated leather, signature serrated 3-Stripes, and herringbone grip.', img: 'https://images.unsplash.com/photo-1584735175315-9d5df23be620?w=600&h=500&fit=crop', colours: ['#ffffff','#000000','#c8a96e'] },
+  snk6: { name: 'Puma Suede Classic',   price: 1099, badge: '',        desc: 'Timeless street sneaker crafted with rich soft suede, iconic formstrip detailing, and effortless vintage appeal.', img: 'https://images.unsplash.com/photo-1556906781-9a412961a28c?w=600&h=500&fit=crop', colours: ['#1a1a6b','#cc2200','#2e5e2e','#000000','#c8a96e'] },
 };
 
 const SIZES = [4,5,6,7,8,9,10,11,12,13];
@@ -122,6 +122,7 @@ function openSneakerModal(id) {
         <div>
           <div class="modal-title">${p.name}</div>
           <div class="modal-price">R${p.price.toLocaleString()}</div>
+          ${p.desc ? `<p style="font-size:0.82rem;color:var(--text-muted);line-height:1.6;margin-top:0.6rem;">${p.desc}</p>` : ''}
         </div>
 
         <div>

@@ -1,0 +1,696 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Ushoti Style | Premium Sneakers &amp; Hair</title>
+  <link rel="stylesheet" href="style.css"/>
+</head>
+<body>
+
+  <!-- Ambient particles -->
+  <canvas id="particles-canvas"></canvas>
+
+  <!-- Sidebar -->
+  <div class="sidebar-overlay" id="sidebar-overlay">
+    <div class="sidebar">
+      <div class="sidebar-header">
+        <span>Shop by Category</span>
+        <button class="sidebar-close" onclick="closeSidebar()">&times;</button>
+      </div>
+
+      <div class="sidebar-section open">
+        <button class="sidebar-section-toggle" onclick="toggleSidebarSection(this)">
+          Sneakers
+          <svg viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"/></svg>
+        </button>
+        <div class="sidebar-links">
+          <a href="sneakers.html">View All Sneakers</a>
+          <a href="sneakers.html" class="promo">New Arrivals</a>
+          <a href="sneakers.html" class="promo">On Sale</a>
+        </div>
+      </div>
+
+      <div class="sidebar-section">
+        <button class="sidebar-section-toggle" onclick="toggleSidebarSection(this)">
+          Hair
+          <svg viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"/></svg>
+        </button>
+        <div class="sidebar-links">
+          <a href="hair.html">View All Hair</a>
+          <a href="hair.html" class="promo">New Arrivals</a>
+          <a href="hair.html" class="promo">On Sale</a>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <nav>
+    <div class="nav-left">
+      <button class="sidebar-menu-btn" onclick="openSidebar()" aria-label="Open menu">
+        <svg viewBox="0 0 24 24"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+      </button>
+      <a href="index.html" class="logo">Ushoti Style</a>
+    </div>
+    <div class="nav-links">
+      <a href="index.html" class="active">Home</a>
+      <a href="products.html">Collections</a>
+      <a href="cart.html" class="cart-link">
+        <svg viewBox="0 0 24 24"><path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 01-8 0"/></svg>
+        <span>Cart</span>
+        <span class="cart-count">0</span>
+      </a>
+    </div>
+  </nav>
+
+  <!-- Hero Slideshow -->
+  <section class="hero-slider">
+
+    <div class="slide-progress" id="slide-progress"></div>
+
+    <div class="slide active" style="background-image:url('https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=1400&h=700&fit=crop')">
+      <div class="slide-overlay"></div>
+      <div class="slide-content">
+        <p class="hero-eyebrow">New Season &mdash; Now Available</p>
+        <h1>Air Force 1<br/><span>White</span></h1>
+        <p>The icon. Reimagined for the streets of South Africa.</p>
+        <div class="hero-actions">
+          <a href="#featured-section" class="btn">Shop Featured</a>
+          <a href="sneakers.html" class="btn btn-outline">All Sneakers</a>
+        </div>
+      </div>
+    </div>
+
+    <div class="slide" style="background-image:url('https://images.unsplash.com/photo-1600185365483-26d7a4cc7519?w=1400&h=700&fit=crop')">
+      <div class="slide-overlay"></div>
+      <div class="slide-content">
+        <p class="hero-eyebrow">Limited Drop</p>
+        <h1>Jordan 1<br/><span>Retro High</span></h1>
+        <p>Heritage silhouette. Premium finish. Built to last.</p>
+        <div class="hero-actions">
+          <button onclick="openSneakerModal('snk2')" class="btn">Quick Order</button>
+          <a href="sneakers.html" class="btn btn-outline">View Collection</a>
+        </div>
+      </div>
+    </div>
+
+    <div class="slide" style="background-image:url('https://images.unsplash.com/photo-1608231387042-66d1773070a5?w=1400&h=700&fit=crop')">
+      <div class="slide-overlay"></div>
+      <div class="slide-content">
+        <p class="hero-eyebrow">Exclusive</p>
+        <h1>Yeezy<br/><span>Boost 350</span></h1>
+        <p>Minimal design. Maximum statement.</p>
+        <div class="hero-actions">
+          <button onclick="openSneakerModal('snk3')" class="btn">Shop Now</button>
+          <a href="sneakers.html" class="btn btn-outline">Explore Sneakers</a>
+        </div>
+      </div>
+    </div>
+
+    <div class="slide" style="background-image:url('https://images.unsplash.com/photo-1522337360788-8b13dee7a37e?w=1400&h=700&fit=crop')">
+      <div class="slide-overlay"></div>
+      <div class="slide-content">
+        <p class="hero-eyebrow">Hair Collection</p>
+        <h1>Body Wave<br/><span>Wig 18"</span></h1>
+        <p>Premium virgin hair &mdash; crafted for every occasion.</p>
+        <div class="hero-actions">
+          <button onclick="openHairModal('hr1')" class="btn">Customise Length</button>
+          <a href="hair.html" class="btn btn-outline">View All Hair</a>
+        </div>
+      </div>
+    </div>
+
+    <div class="slide" style="background-image:url('https://images.unsplash.com/photo-1595476108010-b4d1f102b1b1?w=1400&h=700&fit=crop')">
+      <div class="slide-overlay"></div>
+      <div class="slide-content">
+        <p class="hero-eyebrow">Premium Hair</p>
+        <h1>Curly Lace<br/><span>Front Wig</span></h1>
+        <p>Effortless curls. Flawless finish. Delivered to your door.</p>
+        <div class="hero-actions">
+          <button onclick="openHairModal('hr3')" class="btn">Select Length</button>
+          <a href="hair.html" class="btn btn-outline">Explore Hair</a>
+        </div>
+      </div>
+    </div>
+
+    <button class="slider-arrow slider-prev" onclick="moveSlide(-1)" aria-label="Previous">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><polyline points="15 18 9 12 15 6"/></svg>
+    </button>
+    <button class="slider-arrow slider-next" onclick="moveSlide(1)" aria-label="Next">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><polyline points="9 18 15 12 9 6"/></svg>
+    </button>
+
+    <div class="slider-dots">
+      <button class="dot active" onclick="goToSlide(0)"></button>
+      <button class="dot" onclick="goToSlide(1)"></button>
+      <button class="dot" onclick="goToSlide(2)"></button>
+      <button class="dot" onclick="goToSlide(3)"></button>
+      <button class="dot" onclick="goToSlide(4)"></button>
+    </div>
+
+  </section>
+
+  <!-- Marquee ticker -->
+  <div class="marquee-strip">
+    <div class="marquee-track">
+      <span>Free Delivery Over R1500</span><span class="dot-sep">&bull;</span>
+      <span>Premium Sneakers</span><span class="dot-sep">&bull;</span>
+      <span>Hair Extensions &amp; Wigs</span><span class="dot-sep">&bull;</span>
+      <span>Secure PayFast Checkout</span><span class="dot-sep">&bull;</span>
+      <span>Nationwide Delivery</span><span class="dot-sep">&bull;</span>
+      <span>New Arrivals Weekly</span><span class="dot-sep">&bull;</span>
+      <span>Free Delivery Over R1500</span><span class="dot-sep">&bull;</span>
+      <span>Premium Sneakers</span><span class="dot-sep">&bull;</span>
+      <span>Hair Extensions &amp; Wigs</span><span class="dot-sep">&bull;</span>
+      <span>Secure PayFast Checkout</span><span class="dot-sep">&bull;</span>
+      <span>Nationwide Delivery</span><span class="dot-sep">&bull;</span>
+      <span>New Arrivals Weekly</span><span class="dot-sep">&bull;</span>
+    </div>
+  </div>
+
+  <!-- Trust Perks Strip -->
+  <div class="trust-perks">
+    <div class="trust-perk-item">
+      <div class="trust-perk-icon">
+        <svg viewBox="0 0 24 24"><rect x="1" y="3" width="15" height="13" rx="1"/><path d="M16 8h4l3 5v3h-7V8z"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>
+      </div>
+      <div class="trust-perk-text">
+        <h5>Free Delivery Over R1500</h5>
+        <p>Across all 9 South African provinces</p>
+      </div>
+    </div>
+
+    <div class="trust-perk-item">
+      <div class="trust-perk-icon">
+        <svg viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+      </div>
+      <div class="trust-perk-text">
+        <h5>100% Verified Quality</h5>
+        <p>Every piece inspected before dispatch</p>
+      </div>
+    </div>
+
+    <div class="trust-perk-item">
+      <div class="trust-perk-icon">
+        <svg viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>
+      </div>
+      <div class="trust-perk-text">
+        <h5>PayFast Encrypted</h5>
+        <p>Debit, Credit Card &amp; Instant EFT</p>
+      </div>
+    </div>
+
+    <div class="trust-perk-item">
+      <div class="trust-perk-icon">
+        <svg viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+      </div>
+      <div class="trust-perk-text">
+        <h5>4.9 / 5 Star Rating</h5>
+        <p>Over 500+ happy Mzansi customers</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── FEATURED COLLECTIONS SECTION (DEDICATED CATEGORY TABS) ─────── -->
+  <div class="section" id="featured-section">
+    <div class="section-header-flex reveal">
+      <div>
+        <p class="section-label" id="featured-label">The Sneaker Vault</p>
+        <h2 class="section-title" id="featured-title">Trending Footwear</h2>
+        <div class="section-divider"></div>
+      </div>
+      <a href="sneakers.html" id="section-view-all" class="section-link">
+        View All Sneakers (6)
+        <svg viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"/></svg>
+      </a>
+    </div>
+
+    <!-- Category Tabs: Sneakers & Hair (No combined All Featured tab) -->
+    <div class="filter-tabs reveal">
+      <button class="filter-btn active" onclick="filterFeatured('sneakers', this)">Sneakers (6)</button>
+      <button class="filter-btn" onclick="filterFeatured('hair', this)">Hair &amp; Wigs (6)</button>
+    </div>
+
+    <!-- Dynamic Product Grid -->
+    <div class="product-grid" id="featured-grid">
+
+      <!-- ── SNEAKERS (Visible on load) ────────────────────────── -->
+
+      <!-- Sneaker 1: Air Force 1 White -->
+      <div class="product-card reveal" data-category="sneakers" onclick="openSneakerModal('snk1')">
+        <div class="product-card-img">
+          <img src="https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=400&h=260&fit=crop" alt="Air Force 1 White"/>
+          <span class="product-badge">Classic</span>
+          <button class="wishlist-btn" onclick="toggleWishlist(event, 'Air Force 1 White')" title="Add to Wishlist" aria-label="Add to Wishlist">
+            <svg viewBox="0 0 24 24"><path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z"/></svg>
+          </button>
+        </div>
+        <div class="product-info">
+          <div class="product-meta-header">
+            <span class="product-cat">Footwear</span>
+            <div class="product-stars">★★★★★ <span class="rev-count">(128)</span></div>
+          </div>
+          <h3>Air Force 1 White</h3>
+          <div class="price-stock-row">
+            <div class="price">R1,299</div>
+          </div>
+          <button class="btn" onclick="event.stopPropagation(); openSneakerModal('snk1')">Select Options</button>
+        </div>
+      </div>
+
+      <!-- Sneaker 2: Jordan 1 Retro High -->
+      <div class="product-card reveal reveal-delay-1" data-category="sneakers" onclick="openSneakerModal('snk2')">
+        <div class="product-card-img">
+          <img src="https://images.unsplash.com/photo-1600185365483-26d7a4cc7519?w=400&h=260&fit=crop" alt="Jordan 1 Retro High"/>
+          <span class="product-badge">Premium</span>
+          <button class="wishlist-btn" onclick="toggleWishlist(event, 'Jordan 1 Retro High')" title="Add to Wishlist" aria-label="Add to Wishlist">
+            <svg viewBox="0 0 24 24"><path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z"/></svg>
+          </button>
+        </div>
+        <div class="product-info">
+          <div class="product-meta-header">
+            <span class="product-cat">Footwear</span>
+            <div class="product-stars">★★★★★ <span class="rev-count">(82)</span></div>
+          </div>
+          <h3>Jordan 1 Retro High</h3>
+          <div class="price-stock-row">
+            <div class="price">R2,499</div>
+          </div>
+          <button class="btn" onclick="event.stopPropagation(); openSneakerModal('snk2')">Select Options</button>
+        </div>
+      </div>
+
+      <!-- Sneaker 3: Yeezy Boost 350 -->
+      <div class="product-card reveal reveal-delay-2" data-category="sneakers" onclick="openSneakerModal('snk3')">
+        <div class="product-card-img">
+          <img src="https://images.unsplash.com/photo-1608231387042-66d1773070a5?w=400&h=260&fit=crop" alt="Yeezy Boost 350"/>
+          <span class="product-badge">Limited</span>
+          <button class="wishlist-btn" onclick="toggleWishlist(event, 'Yeezy Boost 350')" title="Add to Wishlist" aria-label="Add to Wishlist">
+            <svg viewBox="0 0 24 24"><path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z"/></svg>
+          </button>
+        </div>
+        <div class="product-info">
+          <div class="product-meta-header">
+            <span class="product-cat">Footwear</span>
+            <div class="product-stars">★★★★★ <span class="rev-count">(71)</span></div>
+          </div>
+          <h3>Yeezy Boost 350</h3>
+          <div class="price-stock-row">
+            <div class="price">R3,199</div>
+          </div>
+          <button class="btn" onclick="event.stopPropagation(); openSneakerModal('snk3')">Select Options</button>
+        </div>
+      </div>
+
+      <!-- Sneaker 4: Nike Dunk Low -->
+      <div class="product-card reveal" data-category="sneakers" onclick="openSneakerModal('snk4')">
+        <div class="product-card-img">
+          <img src="https://images.unsplash.com/photo-1595950653106-6c9ebd614d3a?w=400&h=260&fit=crop" alt="Nike Dunk Low"/>
+          <button class="wishlist-btn" onclick="toggleWishlist(event, 'Nike Dunk Low')" title="Add to Wishlist" aria-label="Add to Wishlist">
+            <svg viewBox="0 0 24 24"><path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z"/></svg>
+          </button>
+        </div>
+        <div class="product-info">
+          <div class="product-meta-header">
+            <span class="product-cat">Footwear</span>
+            <div class="product-stars">★★★★★ <span class="rev-count">(64)</span></div>
+          </div>
+          <h3>Nike Dunk Low</h3>
+          <div class="price-stock-row">
+            <div class="price">R1,599</div>
+          </div>
+          <button class="btn" onclick="event.stopPropagation(); openSneakerModal('snk4')">Select Options</button>
+        </div>
+      </div>
+
+      <!-- Sneaker 5: Adidas Superstar OG -->
+      <div class="product-card reveal reveal-delay-1" data-category="sneakers" onclick="openSneakerModal('snk5')">
+        <div class="product-card-img">
+          <img src="https://images.unsplash.com/photo-1584735175315-9d5df23be620?w=400&h=260&fit=crop" alt="Adidas Superstar OG"/>
+          <button class="wishlist-btn" onclick="toggleWishlist(event, 'Adidas Superstar OG')" title="Add to Wishlist" aria-label="Add to Wishlist">
+            <svg viewBox="0 0 24 24"><path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z"/></svg>
+          </button>
+        </div>
+        <div class="product-info">
+          <div class="product-meta-header">
+            <span class="product-cat">Footwear</span>
+            <div class="product-stars">★★★★★ <span class="rev-count">(51)</span></div>
+          </div>
+          <h3>Adidas Superstar OG</h3>
+          <div class="price-stock-row">
+            <div class="price">R1,450</div>
+          </div>
+          <button class="btn" onclick="event.stopPropagation(); openSneakerModal('snk5')">Select Options</button>
+        </div>
+      </div>
+
+      <!-- Sneaker 6: Puma Suede Classic -->
+      <div class="product-card reveal reveal-delay-2" data-category="sneakers" onclick="openSneakerModal('snk6')">
+        <div class="product-card-img">
+          <img src="https://images.unsplash.com/photo-1556906781-9a412961a28c?w=400&h=260&fit=crop" alt="Puma Suede Classic"/>
+          <button class="wishlist-btn" onclick="toggleWishlist(event, 'Puma Suede Classic')" title="Add to Wishlist" aria-label="Add to Wishlist">
+            <svg viewBox="0 0 24 24"><path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z"/></svg>
+          </button>
+        </div>
+        <div class="product-info">
+          <div class="product-meta-header">
+            <span class="product-cat">Footwear</span>
+            <div class="product-stars">★★★★★ <span class="rev-count">(28)</span></div>
+          </div>
+          <h3>Puma Suede Classic</h3>
+          <div class="price-stock-row">
+            <div class="price">R1,099</div>
+          </div>
+          <button class="btn" onclick="event.stopPropagation(); openSneakerModal('snk6')">Select Options</button>
+        </div>
+      </div>
+
+      <!-- ── HAIR & WIGS (Hidden on initial load, shown when Hair tab is clicked) ── -->
+
+      <!-- Hair 1: Body Wave Wig 18" -->
+      <div class="product-card reveal" data-category="hair" style="display: none;" onclick="openHairModal('hr1')">
+        <div class="product-card-img">
+          <img src="https://images.unsplash.com/photo-1522337360788-8b13dee7a37e?w=400&h=260&fit=crop" alt="Body Wave Wig 18 inch"/>
+          <span class="product-badge">Bestseller</span>
+          <button class="wishlist-btn" onclick="toggleWishlist(event, 'Body Wave Wig 18&quot;')" title="Add to Wishlist" aria-label="Add to Wishlist">
+            <svg viewBox="0 0 24 24"><path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z"/></svg>
+          </button>
+        </div>
+        <div class="product-info">
+          <div class="product-meta-header">
+            <span class="product-cat">Virgin Hair</span>
+            <div class="product-stars">★★★★★ <span class="rev-count">(94)</span></div>
+          </div>
+          <h3>Body Wave Wig 18"</h3>
+          <div class="price-stock-row">
+            <div class="price">R1,850</div>
+          </div>
+          <button class="btn" onclick="event.stopPropagation(); openHairModal('hr1')">Choose Length</button>
+        </div>
+      </div>
+
+      <!-- Hair 2: Straight Bundles 3pcs -->
+      <div class="product-card reveal reveal-delay-1" data-category="hair" style="display: none;" onclick="openHairModal('hr2')">
+        <div class="product-card-img">
+          <img src="https://images.unsplash.com/photo-1560869713-7d0a29430803?w=400&h=260&fit=crop" alt="Straight Bundles 3pcs"/>
+          <button class="wishlist-btn" onclick="toggleWishlist(event, 'Straight Bundles 3pcs')" title="Add to Wishlist" aria-label="Add to Wishlist">
+            <svg viewBox="0 0 24 24"><path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z"/></svg>
+          </button>
+        </div>
+        <div class="product-info">
+          <div class="product-meta-header">
+            <span class="product-cat">Bundle Deals</span>
+            <div class="product-stars">★★★★★ <span class="rev-count">(43)</span></div>
+          </div>
+          <h3>Straight Bundles 3pcs</h3>
+          <div class="price-stock-row">
+            <div class="price">R2,200</div>
+          </div>
+          <button class="btn" onclick="event.stopPropagation(); openHairModal('hr2')">Choose Length</button>
+        </div>
+      </div>
+
+      <!-- Hair 3: Curly Lace Front Wig -->
+      <div class="product-card reveal reveal-delay-2" data-category="hair" style="display: none;" onclick="openHairModal('hr3')">
+        <div class="product-card-img">
+          <img src="https://images.unsplash.com/photo-1595476108010-b4d1f102b1b1?w=400&h=260&fit=crop" alt="Curly Lace Front Wig"/>
+          <span class="product-badge">Premium</span>
+          <button class="wishlist-btn" onclick="toggleWishlist(event, 'Curly Lace Front Wig')" title="Add to Wishlist" aria-label="Add to Wishlist">
+            <svg viewBox="0 0 24 24"><path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z"/></svg>
+          </button>
+        </div>
+        <div class="product-info">
+          <div class="product-meta-header">
+            <span class="product-cat">Virgin Hair</span>
+            <div class="product-stars">★★★★★ <span class="rev-count">(56)</span></div>
+          </div>
+          <h3>Curly Lace Front Wig</h3>
+          <div class="price-stock-row">
+            <div class="price">R2,750</div>
+          </div>
+          <button class="btn" onclick="event.stopPropagation(); openHairModal('hr3')">Choose Length</button>
+        </div>
+      </div>
+
+      <!-- Hair 4: 4x4 Lace Closure -->
+      <div class="product-card reveal" data-category="hair" style="display: none;" onclick="openHairModal('hr4')">
+        <div class="product-card-img">
+          <img src="https://images.unsplash.com/photo-1519699047748-de8e457a634e?w=400&h=260&fit=crop" alt="4x4 Lace Closure"/>
+          <button class="wishlist-btn" onclick="toggleWishlist(event, '4x4 Lace Closure')" title="Add to Wishlist" aria-label="Add to Wishlist">
+            <svg viewBox="0 0 24 24"><path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z"/></svg>
+          </button>
+        </div>
+        <div class="product-info">
+          <div class="product-meta-header">
+            <span class="product-cat">Closures</span>
+            <div class="product-stars">★★★★★ <span class="rev-count">(47)</span></div>
+          </div>
+          <h3>4x4 Lace Closure</h3>
+          <div class="price-stock-row">
+            <div class="price">R950</div>
+          </div>
+          <button class="btn" onclick="event.stopPropagation(); openHairModal('hr4')">Choose Length</button>
+        </div>
+      </div>
+
+      <!-- Hair 5: Deep Wave Bundles 2pcs -->
+      <div class="product-card reveal reveal-delay-1" data-category="hair" style="display: none;" onclick="openHairModal('hr5')">
+        <div class="product-card-img">
+          <img src="https://images.unsplash.com/photo-1580618672591-eb180b1a973f?w=400&h=260&fit=crop" alt="Deep Wave Bundles 2pcs"/>
+          <button class="wishlist-btn" onclick="toggleWishlist(event, 'Deep Wave Bundles 2pcs')" title="Add to Wishlist" aria-label="Add to Wishlist">
+            <svg viewBox="0 0 24 24"><path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z"/></svg>
+          </button>
+        </div>
+        <div class="product-info">
+          <div class="product-meta-header">
+            <span class="product-cat">Virgin Hair</span>
+            <div class="product-stars">★★★★★ <span class="rev-count">(39)</span></div>
+          </div>
+          <h3>Deep Wave Bundles 2pcs</h3>
+          <div class="price-stock-row">
+            <div class="price">R1,700</div>
+          </div>
+          <button class="btn" onclick="event.stopPropagation(); openHairModal('hr5')">Choose Length</button>
+        </div>
+      </div>
+
+      <!-- Hair 6: Short Bob Wig -->
+      <div class="product-card reveal reveal-delay-2" data-category="hair" style="display: none;" onclick="openHairModal('hr6')">
+        <div class="product-card-img">
+          <img src="https://images.unsplash.com/photo-1526045612212-70caf35c14df?w=400&h=260&fit=crop" alt="Short Bob Wig"/>
+          <button class="wishlist-btn" onclick="toggleWishlist(event, 'Short Bob Wig')" title="Add to Wishlist" aria-label="Add to Wishlist">
+            <svg viewBox="0 0 24 24"><path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z"/></svg>
+          </button>
+        </div>
+        <div class="product-info">
+          <div class="product-meta-header">
+            <span class="product-cat">Wigs &amp; Cuts</span>
+            <div class="product-stars">★★★★★ <span class="rev-count">(33)</span></div>
+          </div>
+          <h3>Short Bob Wig</h3>
+          <div class="price-stock-row">
+            <div class="price">R1,350</div>
+          </div>
+          <button class="btn" onclick="event.stopPropagation(); openHairModal('hr6')">Choose Length</button>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ── DUAL SPOTLIGHT: DROP OF THE WEEK & SIGNATURE HAIR ────────── -->
+  <div class="section" style="padding-top:1rem; padding-bottom:2rem;">
+    <div class="spotlight-grid">
+
+      <!-- Spotlight 1: Jordan 1 -->
+      <div class="spotlight-card reveal reveal-left">
+        <div class="spotlight-img">
+          <img src="https://images.unsplash.com/photo-1600185365483-26d7a4cc7519?w=700&h=600&fit=crop" alt="Jordan 1 Retro High"/>
+        </div>
+        <div class="spotlight-body">
+          <div>
+            <span class="spotlight-badge">Weekly Hype Drop</span>
+            <h3 class="spotlight-title">Jordan 1 Retro High</h3>
+            <p class="spotlight-desc">Unrivalled court icon remastered in premium leather for the South African streetwear scene.</p>
+            <ul class="spotlight-features">
+              <li><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg> 4 Authentic Colourways (Red, Black, White, Navy)</li>
+              <li><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg> SA Sizes 4 &ndash; 13 in Stock</li>
+              <li><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg> Encapsulated Nike Air-Sole Cushioning</li>
+            </ul>
+          </div>
+          <div>
+            <div class="spotlight-price-row">
+              <div class="spotlight-price">R2,499</div>
+              <span class="spotlight-status"><span class="stock-dot"></span> Selling Fast</span>
+            </div>
+            <button class="btn" style="width:100%" onclick="openSneakerModal('snk2')">Customise &amp; Order</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Spotlight 2: Body Wave Wig -->
+      <div class="spotlight-card reveal reveal-right">
+        <div class="spotlight-img">
+          <img src="https://images.unsplash.com/photo-1522337360788-8b13dee7a37e?w=700&h=600&fit=crop" alt="Body Wave Wig 18 inch"/>
+        </div>
+        <div class="spotlight-body">
+          <div>
+            <span class="spotlight-badge">Mzansi Favourite</span>
+            <h3 class="spotlight-title">Body Wave Lace Wig 18"</h3>
+            <p class="spotlight-desc">Lustrous 100% human virgin hair with pre-plucked lace for an effortless, undetectable hairline.</p>
+            <ul class="spotlight-features">
+              <li><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg> Available from 10" up to 24" lengths</li>
+              <li><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg> Pre-bleached knots, zero shedding</li>
+              <li><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg> Heat-stylable, bleachable &amp; dyeable</li>
+            </ul>
+          </div>
+          <div>
+            <div class="spotlight-price-row">
+              <div class="spotlight-price">R1,850</div>
+              <span class="spotlight-status" style="color:#16a34a"><span class="stock-dot"></span> In High Demand</span>
+            </div>
+            <button class="btn" style="width:100%" onclick="openHairModal('hr1')">Choose Length &amp; Order</button>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ── LUXURY PROMO BANNER STRIP ─────────────────────────────────── -->
+  <div style="padding: 0 3rem;">
+    <div class="promo-strip-banner reveal">
+      <div class="promo-strip-text">
+        <p class="promo-strip-label">Exclusive Service</p>
+        <h3>Elevate Your Everyday <span>From Head To Toe</span></h3>
+        <p></p>
+      </div>
+      <div class="promo-strip-actions">
+        <a href="sneakers.html" class="btn">Shop Sneakers</a>
+        <a href="hair.html" class="btn btn-outline" style="border-color:var(--gold-pale);color:var(--gold-pale)">Shop Hair</a>
+      </div>
+    </div>
+  </div>
+
+  <!-- Collections Overview -->
+  <div class="section">
+    <p class="section-label reveal">Explore</p>
+    <h2 class="section-title reveal">Our Collections</h2>
+    <div class="section-divider reveal"></div>
+    <div class="category-grid">
+
+      <div class="category-card-img reveal reveal-left">
+        <img src="https://images.unsplash.com/photo-1595950653106-6c9ebd614d3a?w=800&h=380&fit=crop" alt="Sneakers"/>
+        <div class="category-card-img-content">
+          <h3>Sneakers</h3>
+          <p>Iconic silhouettes and limited drops &mdash; from street to statement.</p>
+          <a href="sneakers.html" class="btn">View Collection</a>
+        </div>
+      </div>
+
+      <div class="category-card-img reveal reveal-right">
+        <img src="https://images.unsplash.com/photo-1522337360788-8b13dee7a37e?w=800&h=380&fit=crop" alt="Hair"/>
+        <div class="category-card-img-content">
+          <h3>Hair</h3>
+          <p>Premium extensions, wigs and bundles &mdash; crafted for every look.</p>
+          <a href="hair.html" class="btn">View Collection</a>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- Stats strip -->
+  <div class="stats-strip">
+    <div class="stat-item reveal">
+      <div class="stat-number" data-target="500">0</div>
+      <div class="stat-label">Happy Customers</div>
+    </div>
+    <div class="stat-item reveal reveal-delay-1">
+      <div class="stat-number" data-target="120">0</div>
+      <div class="stat-label">Products Available</div>
+    </div>
+    <div class="stat-item reveal reveal-delay-2">
+      <div class="stat-number" data-target="9">0</div>
+      <div class="stat-label">Provinces Delivered</div>
+    </div>
+  </div>
+
+  <!-- Why Us -->
+  <div class="section" style="padding-top:4rem;">
+    <p class="section-label reveal">The Ushoti Promise</p>
+    <h2 class="section-title reveal">Why Shop With Us</h2>
+    <div class="section-divider reveal"></div>
+    <div class="features-grid">
+
+      <div class="feature-card reveal">
+        <svg class="feature-icon" viewBox="0 0 24 24">
+          <rect x="1" y="3" width="15" height="13" rx="1"/><path d="M16 8h4l3 5v3h-7V8z"/>
+          <circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/>
+        </svg>
+        <h4>Nationwide Delivery</h4>
+        <p>We deliver to all 9 provinces across South Africa with door-to-door tracking</p>
+      </div>
+
+      <div class="feature-card reveal reveal-delay-1">
+        <svg class="feature-icon" viewBox="0 0 24 24">
+          <rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/>
+        </svg>
+        <h4>Secure Payments</h4>
+        <p>All transactions are encrypted and processed securely by PayFast South Africa</p>
+      </div>
+
+      <div class="feature-card reveal reveal-delay-2">
+        <svg class="feature-icon" viewBox="0 0 24 24">
+          <polyline points="20 6 9 17 4 12"/>
+        </svg>
+        <h4>Verified Quality</h4>
+        <p>Every sneaker and hair bundle is thoroughly inspected before it reaches your door</p>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- VIP Drop Alert Newsletter Probably where the sneaker to stock section should be -->
+  <div style="padding: 0 3rem;">
+    <div class="newsletter-strip reveal">
+      <p class="section-label">Be The First To Know</p>
+      <h3>Join The Ushoti VIP Club</h3>
+      <p>Subscribe for early access to limited sneaker releases, secret hair restocks, and members-only promotions.</p>
+      <form class="newsletter-form" onsubmit="subscribeNewsletter(event)">
+        <input type="email" id="newsletter-email" placeholder="Enter your email address..." required/>
+        <button type="submit" class="btn">Join VIP</button>
+      </form>
+    </div>
+  </div>
+
+  <footer>
+    <div class="footer-inner">
+      <div class="footer-brand">
+        <a href="index.html" class="logo">Ushoti Style</a>
+        <p>Premium sneakers and hair, delivered with care across South Africa. Style is not a luxury &mdash; it is a standard.</p>
+      </div>
+      <div class="footer-col">
+        <h5>Shop</h5>
+        <a href="sneakers.html">Sneakers</a>
+        <a href="hair.html">Hair</a>
+        <a href="cart.html">My Cart</a>
+      </div>
+      <div class="footer-col">
+        <h5>Information</h5>
+        <a href="#">Shipping Policy</a>
+        <a href="#">Returns &amp; Exchanges</a>
+        <a href="#">Privacy Policy</a>
+        <a href="#">Contact Us</a>
+      </div>
+    </div>
+    <div class="footer-bottom">
+      <p>&copy; 2025 <span>Ushoti Style</span>. All rights reserved.</p>
+      <p>Proudly South African</p>
+    </div>
+  </footer>
+
+  <script src="app.js"></script>
+  <script src="home.js"></script>
+</body>
+</html>
