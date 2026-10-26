@@ -161,21 +161,25 @@ async function handleGetOrders(request, env, cors) {
 // ── Helpers ──────────────────────────────────────────────────
 
 // Generate PayFast MD5 signature
+// PayFast signs fields in the order they're sent (its documented attribute
+// order), NOT alphabetically — so keep the object's insertion order.
 async function generateSignature(data, passphrase) {
   const ordered = Object.keys(data)
-    .sort()
     .filter(k => k !== 'signature')
-    .map(k => `${k}=${encodeURIComponent(data[k]).replace(/%20/g, '+')}`)
+    .map(k => `${k}=${pfEncode(String(data[k]).trim())}`)
     .join('&');
 
-  const str = passphrase ? `${ordered}&passphrase=${encodeURIComponent(passphrase)}` : ordered;
-
-  const hashBuffer = await crypto.subtle.digest('MD5',
-    new TextEncoder().encode(str)
-  );
+  const str = passphrase ? `${ordered}&passphrase=${pfEncode(passphrase.trim())}` : ordered;
 
   // crypto.subtle doesn't support MD5 natively — use manual MD5
   return md5(str);
+}
+
+// Matches PHP's urlencode(), which PayFast uses to build its signature
+function pfEncode(value) {
+  return encodeURIComponent(value)
+    .replace(/[!'()*~]/g, c => '%' + c.charCodeAt(0).toString(16).toUpperCase())
+    .replace(/%20/g, '+');
 }
 
 // Verify payment with PayFast server
