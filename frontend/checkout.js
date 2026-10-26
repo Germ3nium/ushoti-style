@@ -1,4 +1,4 @@
-const WORKER_URL = 'https://ushoti-style-worker.YOUR_SUBDOMAIN.workers.dev';
+const WORKER_URL = 'https://ushoti-style-worker.sihlek56.workers.dev';
 
 document.addEventListener('DOMContentLoaded', () => {
   const cart = JSON.parse(localStorage.getItem('ushoti_cart')) || [];

@@ -19,6 +19,6 @@ database_id  = "YOUR_D1_DATABASE_ID"   # replace after: wrangler d1 create ushot
 #   wrangler secret put NOTIFY_URL
 
 [vars]
-RETURN_URL  = "https://ushoti-style.pages.dev/success.html"
-CANCEL_URL  = "https://ushoti-style.pages.dev/cart.html"
-NOTIFY_URL  = "https://ushoti-style-worker.YOUR_SUBDOMAIN.workers.dev/api/notify"
+RETURN_URL  = "https://ushoti-style.sihlek56.workers.dev/success.html"
+CANCEL_URL  = "https://ushoti-style.sihlek56.workers.dev/cart.html"
+NOTIFY_URL  = "https://ushoti-style-worker.sihlek56.workers.dev/api/notify"
