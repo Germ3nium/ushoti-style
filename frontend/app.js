@@ -16,20 +16,149 @@ document.addEventListener('click', e => {
   if (overlay && e.target === overlay) closeSidebar();
 });
 
+// ── Backend & Products ───────────────────────────────────────
+// Local `wrangler dev` runs the backend on port 8787 ('' = page opened as a file)
+const API_BASE = ['localhost', '127.0.0.1', ''].includes(location.hostname)
+  ? 'http://localhost:8787'
+  : 'https://ushoti-style-worker.sihlek56.workers.dev';
+
+const SHIPPING_FEE = 80;
+
+let productsPromise = null;
+let productsById = {};
+
+function loadProducts() {
+  if (!productsPromise) {
+    productsPromise = fetch(`${API_BASE}/api/products`)
+      .then(res => {
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        return res.json();
+      })
+      .then(list => {
+        productsById = Object.fromEntries(list.map(p => [p.id, p]));
+        return list;
+      })
+      .catch(err => {
+        productsPromise = null; // allow a retry on the next call
+        throw err;
+      });
+  }
+  return productsPromise;
+}
+
+function escapeHtml(value) {
+  return String(value ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
+}
+
+function formatRand(amount) {
+  return `R${String(Math.round(amount)).replace(/\B(?=(\d{3})+(?!\d))/g, ',')}`;
+}
+
+// Resize Unsplash images; other image links are used as-is
+function sizedImage(url, w, h) {
+  return /images\.unsplash\.com/.test(url)
+    ? url.replace(/w=\d+&h=\d+/, `w=${w}&h=${h}`)
+    : url;
+}
+
+function productCardHtml(p, { featured = false } = {}) {
+  const name = escapeHtml(p.name);
+  const label = p.category === 'sneakers' ? 'Footwear' : 'Hair &amp; Wigs';
+  return `
+    <div class="product-card" data-category="${p.category}" data-id="${escapeHtml(p.id)}" tabindex="0" role="button" aria-label="${name}, ${formatRand(p.price)}">
+      <div class="product-card-img">
+        <img src="${escapeHtml(sizedImage(p.image, 400, 260))}" alt="${name}" loading="lazy"/>
+        ${p.badge ? `<span class="product-badge">${escapeHtml(p.badge)}</span>` : ''}
+        ${featured ? `
+        <button class="wishlist-btn" data-wishlist="${name}" title="Add to Wishlist" aria-label="Add to Wishlist">
+          <svg viewBox="0 0 24 24"><path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z"/></svg>
+        </button>` : ''}
+      </div>
+      <div class="product-info">
+        ${featured ? `<div class="product-meta-header"><span class="product-cat">${label}</span></div>` : ''}
+        <h3>${name}</h3>
+        ${featured
+          ? `<div class="price-stock-row"><div class="price">${formatRand(p.price)}</div></div>`
+          : `<div class="price">${formatRand(p.price)}</div>`}
+      </div>
+    </div>`;
+}
+
+// Cards open their product's options; works for mouse and keyboard
+function bindProductCards(container) {
+  container.addEventListener('click', e => {
+    const wish = e.target.closest('.wishlist-btn');
+    if (wish) {
+      e.stopPropagation();
+      if (typeof toggleWishlist === 'function') toggleWishlist(e, wish.dataset.wishlist);
+      return;
+    }
+    const card = e.target.closest('.product-card');
+    if (card) openProductModal(card.dataset.id);
+  });
+  container.addEventListener('keydown', e => {
+    const card = e.target.closest('.product-card');
+    if (card && e.target === card && (e.key === 'Enter' || e.key === ' ')) {
+      e.preventDefault();
+      openProductModal(card.dataset.id);
+    }
+  });
+}
+
+// Fills any <div data-products="sneakers|hair"> grid on the page
+function renderCategoryGrids() {
+  const grids = document.querySelectorAll('[data-products]');
+  if (!grids.length) return;
+
+  grids.forEach(grid => {
+    grid.innerHTML = '<p class="products-status">Loading products…</p>';
+    bindProductCards(grid);
+  });
+
+  loadProducts().then(list => {
+    grids.forEach(grid => {
+      const items = list.filter(p => p.category === grid.dataset.products);
+      grid.innerHTML = items.length
+        ? items.map(p => productCardHtml(p)).join('')
+        : '<p class="products-status">No products here yet — check back soon.</p>';
+    });
+  }).catch(() => {
+    grids.forEach(grid => {
+      grid.innerHTML = '<p class="products-status">We couldn\'t load products right now. Please refresh the page.</p>';
+    });
+  });
+}
+
+// Keeps hand-written promo blocks in sync with admin: live prices, and the
+// block is hidden if the product is removed or hidden from the shop
+function syncPromoProducts() {
+  const cards  = document.querySelectorAll('[data-product-card]');
+  const prices = document.querySelectorAll('[data-product-price]');
+  if (!cards.length && !prices.length) return;
+
+  loadProducts().then(() => {
+    prices.forEach(el => {
+      const p = productsById[el.dataset.productPrice];
+      if (p) el.textContent = formatRand(p.price);
+    });
+    cards.forEach(el => {
+      el.hidden = !productsById[el.dataset.productCard];
+    });
+  }).catch(() => { /* keep the written-in prices */ });
+}
+
+function openProductModal(id) {
+  loadProducts().then(() => {
+    const p = productsById[id];
+    if (!p) return showToast('Sorry, that product is no longer available.');
+    if (p.category === 'sneakers') openSneakerModal(p);
+    else openHairModal(p);
+  }).catch(() => showToast('Couldn\'t load product details. Please try again.'));
+}
+
 // ── Hair Modal ──────────────────────────────────────────────
-const hairData = {
-  hr1: { name: 'Body Wave Wig 18"',     price: 1850, badge: 'Bestseller', img: 'https://images.unsplash.com/photo-1522337360788-8b13dee7a37e?w=600&h=500&fit=crop', inches: [10,12,14,16,18,20,22,24], desc: 'Soft, natural-looking body waves with a silky finish. Full lace construction for a seamless hairline. Perfect for everyday wear or special occasions.' },
-  hr2: { name: 'Straight Bundles 3pcs', price: 2200, badge: '',           img: 'https://images.unsplash.com/photo-1560869713-7d0a29430803?w=600&h=500&fit=crop', inches: [12,14,16,18,20,22,24,26,28], desc: 'Sleek, tangle-free straight bundles made from 100% virgin hair. Comes as a 3-piece set — can be dyed, bleached and heat-styled.' },
-  hr3: { name: 'Curly Lace Front Wig',  price: 2750, badge: 'Premium',    img: 'https://images.unsplash.com/photo-1595476108010-b4d1f102b1b1?w=600&h=500&fit=crop', inches: [10,12,14,16,18,20,22], desc: 'Bouncy, defined curls with a pre-plucked lace front for a natural hairline. Lightweight and breathable — ideal for all-day comfort.' },
-  hr4: { name: '4x4 Lace Closure',      price: 950,  badge: '',           img: 'https://images.unsplash.com/photo-1519699047748-de8e457a634e?w=600&h=500&fit=crop', inches: [10,12,14,16,18], desc: 'Free-part 4x4 lace closure for a flawless finish. Pairs perfectly with any bundle. Pre-bleached knots for a realistic scalp appearance.' },
-  hr5: { name: 'Deep Wave Bundles 2pcs',price: 1700,  badge: '',           img: 'https://images.unsplash.com/photo-1580618672591-eb180b1a973f?w=600&h=500&fit=crop', inches: [12,14,16,18,20,22,24,26], desc: 'Rich, deep wave pattern with a lustrous shine. 2-piece bundle set made from unprocessed virgin hair. Holds moisture well and minimal shedding.' },
-  hr6: { name: 'Short Bob Wig',         price: 1350, badge: '',           img: 'https://images.unsplash.com/photo-1526045612212-70caf35c14df?w=600&h=500&fit=crop', inches: [8,10,12,14], desc: 'Chic and low-maintenance short bob cut. Full lace wig with adjustable straps for a secure fit. Great for a bold, confident everyday look.' },
-};
-
-function openHairModal(id) {
-  const p = hairData[id];
-  if (!p) return;
-
+function openHairModal(p) {
+  const id = p.id;
   let selectedInch = null;
 
   const overlay = document.createElement('div');
@@ -38,19 +167,19 @@ function openHairModal(id) {
     <div class="modal" role="dialog" aria-modal="true">
       <div class="modal-img">
         <button class="modal-close" aria-label="Close">&times;</button>
-        <img src="${p.img}" alt="${p.name}"/>
-        ${p.badge ? `<span class="product-badge">${p.badge}</span>` : ''}
+        <img src="${escapeHtml(sizedImage(p.image, 600, 500))}" alt="${escapeHtml(p.name)}"/>
+        ${p.badge ? `<span class="product-badge">${escapeHtml(p.badge)}</span>` : ''}
       </div>
       <div class="modal-body">
         <div>
-          <div class="modal-title">${p.name}</div>
-          <div class="modal-price">R${p.price.toLocaleString()}</div>
-          <p style="font-size:0.82rem;color:var(--text-muted);line-height:1.6;margin-top:0.6rem;">${p.desc}</p>
+          <div class="modal-title">${escapeHtml(p.name)}</div>
+          <div class="modal-price">${formatRand(p.price)}</div>
+          ${p.description ? `<p style="font-size:0.82rem;color:var(--text-muted);line-height:1.6;margin-top:0.6rem;">${escapeHtml(p.description)}</p>` : ''}
         </div>
         <div>
           <div class="modal-label">Length (inches)</div>
           <div class="size-grid">
-            ${p.inches.map(i => `<button class="size-btn" data-inch="${i}">${i}"</button>`).join('')}
+            ${(p.options.lengths || []).map(i => `<button class="size-btn" data-inch="${i}">${i}"</button>`).join('')}
           </div>
         </div>
         <div class="modal-selection-info" id="modal-sel-info">Select a length</div>
@@ -78,7 +207,7 @@ function openHairModal(id) {
   addBtn.addEventListener('click', () => {
     const itemId   = `${id}-${selectedInch}in`;
     const itemName = `${p.name} (${selectedInch}")`;
-    const thumbUrl = p.img.replace('w=600&h=500', 'w=80&h=80');
+    const thumbUrl = sizedImage(p.image, 80, 80);
     closeModal(overlay);
     setTimeout(() => addToCart(itemId, itemName, p.price, thumbUrl), 320);
   });
@@ -91,20 +220,10 @@ function openHairModal(id) {
 }
 
 // ── Sneaker Modal ────────────────────────────────────────────
-const sneakerData = {
-  snk1: { name: 'Air Force 1 White',    price: 1299, badge: 'Classic', desc: 'The iconic low-top silhouette featuring crisp leather, encapsulated Air cushioning, and timeless street style.', img: 'https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=600&h=500&fit=crop', colours: ['#ffffff','#000000','#c8a96e','#b0c4de'] },
-  snk2: { name: 'Jordan 1 Retro High',  price: 2499, badge: 'Premium', desc: 'Court heritage silhouette with premium full-grain leather, padded ankle support, and unmistakable Wings branding.', img: 'https://images.unsplash.com/photo-1600185365483-26d7a4cc7519?w=600&h=500&fit=crop', colours: ['#cc2200','#000000','#ffffff','#1a3a6b'] },
-  snk3: { name: 'Yeezy Boost 350',      price: 3199, badge: 'Limited', desc: 'Sleek re-engineered Primeknit upper fitted with full-length adidas Boost technology for supreme cloud-like cushioning.', img: 'https://images.unsplash.com/photo-1608231387042-66d1773070a5?w=600&h=500&fit=crop', colours: ['#c8b89a','#3d3d3d','#000000','#f5f0e8'] },
-  snk4: { name: 'Nike Dunk Low',        price: 1599, badge: '',        desc: 'Vintage collegiate styling with clean leather overlays, a low-cut padded collar, and durable rubber cupsole.', img: 'https://images.unsplash.com/photo-1595950653106-6c9ebd614d3a?w=600&h=500&fit=crop', colours: ['#ffffff','#2e5e2e','#8b0000','#000000'] },
-  snk5: { name: 'Adidas Superstar OG',  price: 1450, badge: '',        desc: 'The original shell-toe legend featuring smooth coated leather, signature serrated 3-Stripes, and herringbone grip.', img: 'https://images.unsplash.com/photo-1584735175315-9d5df23be620?w=600&h=500&fit=crop', colours: ['#ffffff','#000000','#c8a96e'] },
-  snk6: { name: 'Puma Suede Classic',   price: 1099, badge: '',        desc: 'Timeless street sneaker crafted with rich soft suede, iconic formstrip detailing, and effortless vintage appeal.', img: 'https://images.unsplash.com/photo-1556906781-9a412961a28c?w=600&h=500&fit=crop', colours: ['#1a1a6b','#cc2200','#2e5e2e','#000000','#c8a96e'] },
-};
-
-const SIZES = [4,5,6,7,8,9,10,11,12,13];
-
-function openSneakerModal(id) {
-  const p = sneakerData[id];
-  if (!p) return;
+function openSneakerModal(p) {
+  const id = p.id;
+  const colours = p.options.colours || [];
+  const colourName = hex => (colours.find(c => c.hex === hex) || {}).name || hex;
 
   let selectedSize = null;
   let selectedColour = null;
@@ -115,27 +234,27 @@ function openSneakerModal(id) {
     <div class="modal" role="dialog" aria-modal="true">
       <div class="modal-img">
         <button class="modal-close" aria-label="Close">&times;</button>
-        <img src="${p.img}" alt="${p.name}"/>
-        ${p.badge ? `<span class="product-badge">${p.badge}</span>` : ''}
+        <img src="${escapeHtml(sizedImage(p.image, 600, 500))}" alt="${escapeHtml(p.name)}"/>
+        ${p.badge ? `<span class="product-badge">${escapeHtml(p.badge)}</span>` : ''}
       </div>
       <div class="modal-body">
         <div>
-          <div class="modal-title">${p.name}</div>
-          <div class="modal-price">R${p.price.toLocaleString()}</div>
-          ${p.desc ? `<p style="font-size:0.82rem;color:var(--text-muted);line-height:1.6;margin-top:0.6rem;">${p.desc}</p>` : ''}
+          <div class="modal-title">${escapeHtml(p.name)}</div>
+          <div class="modal-price">${formatRand(p.price)}</div>
+          ${p.description ? `<p style="font-size:0.82rem;color:var(--text-muted);line-height:1.6;margin-top:0.6rem;">${escapeHtml(p.description)}</p>` : ''}
         </div>
 
         <div>
           <div class="modal-label">Size (SA)</div>
           <div class="size-grid">
-            ${SIZES.map(s => `<button class="size-btn" data-size="${s}">${s}</button>`).join('')}
+            ${(p.options.sizes || []).map(s => `<button class="size-btn" data-size="${s}">${s}</button>`).join('')}
           </div>
         </div>
 
         <div>
           <div class="modal-label">Colour</div>
           <div class="colour-grid">
-            ${p.colours.map(c => `<button class="colour-swatch" data-colour="${c}" style="background:${c};" title="${c}" aria-label="${c}"></button>`).join('')}
+            ${colours.map(c => `<button class="colour-swatch" data-colour="${escapeHtml(c.hex)}" style="background:${escapeHtml(c.hex)};" title="${escapeHtml(c.name)}" aria-label="${escapeHtml(c.name)}"></button>`).join('')}
           </div>
         </div>
 
@@ -186,7 +305,7 @@ function openSneakerModal(id) {
   addBtn.addEventListener('click', () => {
     const itemId   = `${id}-${selectedSize}-${selectedColour}`;
     const itemName = `${p.name} (Size ${selectedSize}, ${colourName(selectedColour)})`;
-    const thumbUrl = p.img.replace('w=600&h=500', 'w=80&h=80');
+    const thumbUrl = sizedImage(p.image, 80, 80);
     closeModal(overlay);
     setTimeout(() => addToCart(itemId, itemName, p.price, thumbUrl), 320);
   });
@@ -201,11 +320,6 @@ function openSneakerModal(id) {
 function closeModal(overlay) {
   overlay.classList.remove('open');
   setTimeout(() => overlay.remove(), 300);
-}
-
-function colourName(hex) {
-  const map = { '#ffffff':'White','#000000':'Black','#c8a96e':'Tan','#b0c4de':'Steel Blue','#cc2200':'Red','#1a3a6b':'Navy','#c8b89a':'Sand','#3d3d3d':'Dark Grey','#f5f0e8':'Cream','#2e5e2e':'Green','#8b0000':'Dark Red','#1a1a6b':'Blue','#c8a96e':'Tan' };
-  return map[hex.toLowerCase()] || hex;
 }
 
 // ── Cart State ──────────────────────────────────────────────
@@ -275,9 +389,9 @@ function renderCart() {
 
   container.innerHTML = cart.map(item => `
     <div class="cart-item">
-      <img src="${item.image}" alt="${item.name}" onerror="this.src='https://placehold.co/80x80/1a1a1a/c9a84c?text=Item'">
+      <img src="${escapeHtml(item.image)}" alt="${escapeHtml(item.name)}" onerror="this.src='https://placehold.co/80x80/1a1a1a/c9a84c?text=Item'">
       <div class="cart-item-info">
-        <h4>${item.name}</h4>
+        <h4>${escapeHtml(item.name)}</h4>
         <div class="price">R${(item.price * item.qty).toFixed(2)}</div>
       </div>
       <div class="qty-controls">
@@ -292,7 +406,7 @@ function renderCart() {
   `).join('');
 
   const subtotal = cart.reduce((sum, i) => sum + i.price * i.qty, 0);
-  const shipping = subtotal > 0 ? 80 : 0;
+  const shipping = subtotal > 0 ? SHIPPING_FEE : 0;
   const total = subtotal + shipping;
 
   if (summaryEl) {
@@ -327,13 +441,13 @@ function renderOrderSummary() {
   if (!box) return;
 
   const subtotal = cart.reduce((sum, i) => sum + i.price * i.qty, 0);
-  const shipping = 80;
+  const shipping = SHIPPING_FEE;
   const total = subtotal + shipping;
 
   box.innerHTML = `
     ${cart.map(i => `
       <div class="summary-line">
-        <span>${i.name} × ${i.qty}</span>
+        <span>${escapeHtml(i.name)} × ${i.qty}</span>
         <span>R${(i.price * i.qty).toFixed(2)}</span>
       </div>`).join('')}
     <div class="summary-line"><span>Shipping</span><span>R${shipping.toFixed(2)}</span></div>
@@ -356,4 +470,6 @@ document.addEventListener('DOMContentLoaded', () => {
   updateCartBadge();
   renderCart();
   renderOrderSummary();
+  renderCategoryGrids();
+  syncPromoProducts();
 });

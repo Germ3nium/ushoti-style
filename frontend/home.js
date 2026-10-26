@@ -109,7 +109,30 @@ const counterObserver = new IntersectionObserver((entries) => {
 }, { threshold: 0.5 });
 counters.forEach(c => counterObserver.observe(c));
 
-// ── Dedicated Category Switcher (Sneakers vs Hair) ───────
+// ── Featured Products (Sneakers vs Hair) ─────────────────
+const featuredGrid = document.getElementById('featured-grid');
+let featuredCounts = { sneakers: 0, hair: 0 };
+
+function renderFeatured() {
+  featuredGrid.innerHTML = '<p class="products-status">Loading products…</p>';
+  bindProductCards(featuredGrid);
+
+  loadProducts().then(list => {
+    featuredCounts = {
+      sneakers: list.filter(p => p.category === 'sneakers').length,
+      hair:     list.filter(p => p.category === 'hair').length
+    };
+    document.querySelectorAll('.filter-btn[data-filter]').forEach(btn => {
+      const label = btn.dataset.filter === 'sneakers' ? 'Sneakers' : 'Hair &amp; Wigs';
+      btn.innerHTML = `${label} (${featuredCounts[btn.dataset.filter]})`;
+    });
+    featuredGrid.innerHTML = list.map(p => productCardHtml(p, { featured: true })).join('');
+    filterFeatured('sneakers', document.querySelector('.filter-btn[data-filter="sneakers"]'));
+  }).catch(() => {
+    featuredGrid.innerHTML = '<p class="products-status">We couldn\'t load products right now. Please refresh the page.</p>';
+  });
+}
+
 function filterFeatured(category, btn) {
   document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
   btn.classList.add('active');
@@ -117,38 +140,35 @@ function filterFeatured(category, btn) {
   const labelEl = document.getElementById('featured-label');
   const titleEl = document.getElementById('featured-title');
   const viewAllLink = document.getElementById('section-view-all');
+  const arrow = '<svg viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"/></svg>';
 
   if (category === 'sneakers') {
     if (labelEl) labelEl.textContent = 'The Sneaker Vault';
     if (titleEl) titleEl.textContent = 'Trending Footwear';
     if (viewAllLink) {
       viewAllLink.href = 'sneakers.html';
-      viewAllLink.innerHTML = 'View All Sneakers (6) <svg viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"/></svg>';
+      viewAllLink.innerHTML = `View All Sneakers (${featuredCounts.sneakers}) ${arrow}`;
     }
   } else if (category === 'hair') {
     if (labelEl) labelEl.textContent = 'Crown & Glory Boutique';
     if (titleEl) titleEl.textContent = 'Luxury Extensions & Wigs';
     if (viewAllLink) {
       viewAllLink.href = 'hair.html';
-      viewAllLink.innerHTML = 'View All Hair (6) <svg viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"/></svg>';
+      viewAllLink.innerHTML = `View All Hair (${featuredCounts.hair}) ${arrow}`;
     }
   }
 
-  const cards = document.querySelectorAll('#featured-grid .product-card');
-  cards.forEach(card => {
-    const cat = card.dataset.category || '';
-    if (cat.includes(category)) {
-      card.style.display = 'block';
-    } else {
-      card.style.display = 'none';
-    }
+  featuredGrid.querySelectorAll('.product-card').forEach(card => {
+    card.style.display = card.dataset.category === category ? 'block' : 'none';
   });
 }
+
+renderFeatured();
 
 // ── Wishlist Toggle ──────────────────────────────────────
 function toggleWishlist(e, name) {
   e.stopPropagation();
-  const btn = e.currentTarget;
+  const btn = e.target.closest('.wishlist-btn');
   const isFilled = btn.classList.toggle('active');
   if (typeof showToast === 'function') {
     showToast(isFilled ? `${name} added to your wishlist!` : `${name} removed from your wishlist.`);

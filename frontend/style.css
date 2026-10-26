@@ -2101,3 +2101,15 @@ footer {
   .newsletter-form { flex-direction: column; }
   .newsletter-form .btn { width: 100%; }
 }
+
+/* Shown while product grids load from the backend */
+.products-status {
+  grid-column: 1 / -1;
+  text-align: center;
+  color: var(--text-muted);
+  font-size: 0.9rem;
+  padding: 3rem 1rem;
+}
+
+/* Make the hidden attribute win over display rules like .spotlight-card's grid */
+[hidden] { display: none !important; }

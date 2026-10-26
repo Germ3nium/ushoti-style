@@ -1,8 +1,16 @@
 // ── Cloudflare Worker for Ushoti Style ──────────────────────
 // Handles:
-//   POST /api/sign-payment   → generates PayFast MD5 signature
-//   POST /api/notify         → receives PayFast payment notification
-//   GET  /api/orders         → lists all orders (admin)
+//   GET    /api/products              → active products for the shop
+//   POST   /api/sign-payment          → creates a PENDING order, returns signed PayFast fields
+//   POST   /api/notify                → PayFast payment notification (marks order PAID)
+//   Admin (Authorization: Bearer ADMIN_KEY):
+//   GET    /api/admin/summary         → sales totals and best sellers
+//   GET    /api/admin/orders          → orders (?status=PAID|PENDING|FAILED|ALL)
+//   PATCH  /api/admin/orders/:id      → update fulfilment status
+//   GET    /api/admin/products        → all products, including hidden ones
+//   POST   /api/admin/products        → create product
+//   PUT    /api/admin/products/:id    → update product
+//   DELETE /api/admin/products/:id    → delete product
 
 const PAYFAST_SANDBOX = true; // set to false when going live
 
@@ -10,155 +18,400 @@ const PF_HOST = PAYFAST_SANDBOX
   ? 'sandbox.payfast.co.za'
   : 'www.payfast.co.za';
 
+const SHIPPING_FEE = 80;
+const CATEGORIES   = ['sneakers', 'hair'];
+const FULFILMENT   = ['NEW', 'PROCESSING', 'SHIPPED', 'DELIVERED', 'CANCELLED'];
+
 export default {
   async fetch(request, env) {
     const url = new URL(request.url);
+    const { pathname } = url;
+    const method = request.method;
 
     // CORS headers for all responses
     const cors = {
       'Access-Control-Allow-Origin': '*',
-      'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-      'Access-Control-Allow-Headers': 'Content-Type',
+      'Access-Control-Allow-Methods': 'GET, POST, PUT, PATCH, DELETE, OPTIONS',
+      'Access-Control-Allow-Headers': 'Content-Type, Authorization',
     };
 
-    if (request.method === 'OPTIONS') {
+    if (method === 'OPTIONS') {
       return new Response(null, { headers: cors });
     }
 
-    // ── Route: Generate PayFast Signature ─────────────────
-    if (url.pathname === '/api/sign-payment' && request.method === 'POST') {
-      return handleSignPayment(request, env, cors);
-    }
+    try {
+      // ── Public routes ──────────────────────────────────────
+      if (pathname === '/api/products' && method === 'GET') {
+        return await handleGetProducts(env, cors);
+      }
 
-    // ── Route: PayFast Payment Notification (ITN) ─────────
-    if (url.pathname === '/api/notify' && request.method === 'POST') {
-      return handleNotify(request, env, cors);
-    }
+      if (pathname === '/api/sign-payment' && method === 'POST') {
+        return await handleSignPayment(request, env, cors);
+      }
 
-    // ── Route: Get Orders (Admin) ──────────────────────────
-    if (url.pathname === '/api/orders' && request.method === 'GET') {
-      return handleGetOrders(request, env, cors);
-    }
+      if (pathname === '/api/notify' && method === 'POST') {
+        return await handleNotify(request, env, cors);
+      }
 
-    return new Response('Not Found', { status: 404, headers: cors });
+      // ── Admin routes ───────────────────────────────────────
+      if (pathname.startsWith('/api/admin/')) {
+        if (!isAdmin(request, env)) {
+          return json({ error: 'Unauthorized' }, cors, 401);
+        }
+
+        const [, , , resource, id] = pathname.split('/'); // '', 'api', 'admin', resource, id
+
+        if (resource === 'summary' && method === 'GET')            return await handleSummary(env, cors);
+        if (resource === 'orders' && !id && method === 'GET')       return await handleAdminOrders(url, env, cors);
+        if (resource === 'orders' && id && method === 'PATCH')      return await handleUpdateOrder(id, request, env, cors);
+        if (resource === 'products' && !id && method === 'GET')     return await handleAdminProducts(env, cors);
+        if (resource === 'products' && !id && method === 'POST')    return await handleSaveProduct(null, request, env, cors);
+        if (resource === 'products' && id && method === 'PUT')      return await handleSaveProduct(id, request, env, cors);
+        if (resource === 'products' && id && method === 'DELETE')   return await handleDeleteProduct(id, env, cors);
+      }
+
+      return new Response('Not Found', { status: 404, headers: cors });
+
+    } catch (e) {
+      return json({ error: e.message }, cors, 500);
+    }
   }
 };
 
+// ── Products (public) ────────────────────────────────────────
+async function handleGetProducts(env, cors) {
+  const { results } = await env.DB.prepare(
+    'SELECT id, category, name, price, badge, description, image, options FROM products WHERE active = 1 ORDER BY category, sort_order, created_at'
+  ).all();
+
+  return json(results.map(parseProduct), {
+    ...cors,
+    'Cache-Control': 'no-cache' // admin changes show on the next page load
+  });
+}
+
 // ── Sign Payment ─────────────────────────────────────────────
+// Prices come from the database, never from the browser.
 async function handleSignPayment(request, env, cors) {
-  try {
-    const body = await request.json();
+  const body = await request.json();
 
-    const pfData = {
-      merchant_id:   env.PAYFAST_MERCHANT_ID,
-      merchant_key:  env.PAYFAST_MERCHANT_KEY,
-      return_url:    env.RETURN_URL,
-      cancel_url:    env.CANCEL_URL,
-      notify_url:    env.NOTIFY_URL,
-      name_first:    sanitize(body.name_first),
-      name_last:     sanitize(body.name_last),
-      email_address: sanitize(body.email_address),
-      cell_number:   sanitize(body.cell_number || ''),
-      amount:        parseFloat(body.amount).toFixed(2),
-      item_name:     sanitize(body.item_name),
-    };
-
-    // Remove empty fields
-    Object.keys(pfData).forEach(k => {
-      if (!pfData[k]) delete pfData[k];
-    });
-
-    const signature = await generateSignature(pfData, env.PAYFAST_PASSPHRASE);
-
-    return new Response(JSON.stringify({
-      ...pfData,
-      signature,
-      payfast_url: `https://${PF_HOST}/eng/process`
-    }), {
-      headers: { 'Content-Type': 'application/json', ...cors }
-    });
-
-  } catch (e) {
-    return new Response(JSON.stringify({ error: e.message }), {
-      status: 400,
-      headers: { 'Content-Type': 'application/json', ...cors }
-    });
+  const required = ['name_first', 'name_last', 'email_address', 'street', 'city', 'postal_code', 'province'];
+  for (const field of required) {
+    if (!sanitize(body[field])) return json({ error: `Missing ${field}` }, cors, 400);
   }
+
+  const items = await priceCartItems(body.items, env);
+  if (items.error) return json({ error: items.error }, cors, 400);
+
+  const subtotal = items.reduce((s, i) => s + i.price * i.qty, 0);
+  const total    = subtotal + SHIPPING_FEE;
+  const orderRef = crypto.randomUUID();
+  const itemName = items.map(i => `${i.name} x${i.qty}`).join(', ');
+  const now      = new Date().toISOString();
+
+  await env.DB.prepare(`
+    INSERT INTO orders (
+      order_ref, status, items, item_name, subtotal, shipping, total,
+      name_first, name_last, email, phone, street, city, postal_code, province,
+      created_at, updated_at
+    ) VALUES (?, 'PENDING', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+  `).bind(
+    orderRef, JSON.stringify(items), itemName, subtotal, SHIPPING_FEE, total,
+    sanitize(body.name_first), sanitize(body.name_last), sanitize(body.email_address),
+    sanitize(body.cell_number), sanitize(body.street), sanitize(body.city),
+    sanitize(body.postal_code), sanitize(body.province), now, now
+  ).run();
+
+  // Field order matters — PayFast signs them in this documented order
+  const pfData = {
+    merchant_id:   env.PAYFAST_MERCHANT_ID,
+    merchant_key:  env.PAYFAST_MERCHANT_KEY,
+    return_url:    env.RETURN_URL,
+    cancel_url:    env.CANCEL_URL,
+    notify_url:    env.NOTIFY_URL,
+    name_first:    sanitize(body.name_first),
+    name_last:     sanitize(body.name_last),
+    email_address: sanitize(body.email_address),
+    cell_number:   sanitize(body.cell_number).replace(/\D/g, ''),
+    m_payment_id:  orderRef,
+    amount:        total.toFixed(2),
+    item_name:     sanitize(itemName).slice(0, 100).trim(), // PayFast limit
+  };
+
+  // Remove empty fields
+  Object.keys(pfData).forEach(k => {
+    if (!pfData[k]) delete pfData[k];
+  });
+
+  const signature = await generateSignature(pfData, env.PAYFAST_PASSPHRASE);
+
+  return json({
+    ...pfData,
+    signature,
+    payfast_url: `https://${PF_HOST}/eng/process`
+  }, cors);
+}
+
+// Turns cart lines like { id: 'snk1-9-#ffffff', qty: 1 } into priced items,
+// checking that the product exists and the chosen option is offered.
+async function priceCartItems(cartItems, env) {
+  if (!Array.isArray(cartItems) || cartItems.length === 0) return { error: 'Cart is empty' };
+  if (cartItems.length > 50) return { error: 'Too many items' };
+
+  const { results } = await env.DB.prepare('SELECT * FROM products WHERE active = 1').all();
+  const products = Object.fromEntries(results.map(p => [p.id, parseProduct(p)]));
+
+  const priced = [];
+  for (const line of cartItems) {
+    const qty = parseInt(line.qty, 10);
+    if (!(qty >= 1 && qty <= 20)) return { error: 'Invalid quantity' };
+
+    const [productId, ...rest] = String(line.id || '').split('-');
+    const p = products[productId];
+    if (!p) return { error: 'A product in your cart is no longer available' };
+
+    let option;
+    if (p.category === 'sneakers') {
+      const size   = Number(rest[0]);
+      const colour = (p.options.colours || []).find(c => c.hex.toLowerCase() === rest.slice(1).join('-').toLowerCase());
+      if (!(p.options.sizes || []).includes(size) || !colour) return { error: `Please re-select options for ${p.name}` };
+      option = `Size ${size}, ${colour.name}`;
+    } else {
+      const length = parseInt(rest[0], 10);
+      if (!(p.options.lengths || []).includes(length)) return { error: `Please re-select options for ${p.name}` };
+      option = `${length}"`;
+    }
+
+    priced.push({ product_id: p.id, name: p.name, option, price: p.price, qty });
+  }
+  return priced;
 }
 
 // ── Handle PayFast ITN Notification ─────────────────────────
 async function handleNotify(request, env, cors) {
-  try {
-    const rawBody = await request.text();
-    const params = new URLSearchParams(rawBody);
-    const data = Object.fromEntries(params);
+  const rawBody = await request.text();
+  const params = new URLSearchParams(rawBody);
+  const data = Object.fromEntries(params);
 
-    // 1. Verify payment status
-    if (data.payment_status !== 'COMPLETE') {
-      return new Response('PAYMENT_NOT_COMPLETE', { status: 200, headers: cors });
-    }
+  // 1. Verify signature
+  const receivedSig = data.signature;
+  delete data.signature;
+  const expectedSig = await generateSignature(data, env.PAYFAST_PASSPHRASE);
 
-    // 2. Verify signature
-    const receivedSig = data.signature;
-    delete data.signature;
-    const expectedSig = await generateSignature(data, env.PAYFAST_PASSPHRASE);
-
-    if (receivedSig !== expectedSig) {
-      return new Response('INVALID_SIGNATURE', { status: 400, headers: cors });
-    }
-
-    // 3. Verify with PayFast server (source IP validation)
-    const pfValid = await verifyWithPayFast(rawBody, PF_HOST);
-    if (!pfValid) {
-      return new Response('PAYFAST_VERIFY_FAILED', { status: 400, headers: cors });
-    }
-
-    // 4. Save order to D1 database
-    await env.DB.prepare(`
-      INSERT INTO orders (
-        payment_id, merchant_id, amount, item_name,
-        name_first, name_last, email, status, created_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `).bind(
-      data.pf_payment_id,
-      data.merchant_id,
-      data.amount_gross,
-      data.item_name,
-      data.name_first || '',
-      data.name_last || '',
-      data.email_address || '',
-      'PAID',
-      new Date().toISOString()
-    ).run();
-
-    return new Response('OK', { status: 200, headers: cors });
-
-  } catch (e) {
-    return new Response(JSON.stringify({ error: e.message }), {
-      status: 500,
-      headers: { 'Content-Type': 'application/json', ...cors }
-    });
+  if (receivedSig !== expectedSig) {
+    return new Response('INVALID_SIGNATURE', { status: 400, headers: cors });
   }
+
+  // 2. Verify with PayFast server
+  const pfValid = await verifyWithPayFast(rawBody, PF_HOST);
+  if (!pfValid) {
+    return new Response('PAYFAST_VERIFY_FAILED', { status: 400, headers: cors });
+  }
+
+  const order = await env.DB.prepare('SELECT id, total FROM orders WHERE order_ref = ?')
+    .bind(data.m_payment_id || '').first();
+  if (!order) {
+    return new Response('UNKNOWN_ORDER', { status: 200, headers: cors });
+  }
+
+  const now = new Date().toISOString();
+
+  if (data.payment_status !== 'COMPLETE') {
+    await env.DB.prepare(`UPDATE orders SET status = 'FAILED', updated_at = ? WHERE id = ? AND status = 'PENDING'`)
+      .bind(now, order.id).run();
+    return new Response('OK', { status: 200, headers: cors });
+  }
+
+  // 3. Make sure the amount paid matches what we charged
+  const paid = parseFloat(data.amount_gross);
+  if (Math.abs(paid - order.total) > 0.01) {
+    return new Response('AMOUNT_MISMATCH', { status: 400, headers: cors });
+  }
+
+  // 4. Mark the order as paid
+  await env.DB.prepare(`
+    UPDATE orders SET status = 'PAID', payment_id = ?, amount_paid = ?, paid_at = ?, updated_at = ?
+    WHERE id = ?
+  `).bind(data.pf_payment_id, paid, now, now, order.id).run();
+
+  return new Response('OK', { status: 200, headers: cors });
 }
 
-// ── Get Orders (Admin) ───────────────────────────────────────
-async function handleGetOrders(request, env, cors) {
-  // Basic auth check using admin key
-  const authHeader = request.headers.get('Authorization');
-  if (!env.ADMIN_KEY || authHeader !== `Bearer ${env.ADMIN_KEY}`) {
-    return new Response('Unauthorized', { status: 401, headers: cors });
-  }
-
-  const { results } = await env.DB.prepare(
-    'SELECT * FROM orders ORDER BY created_at DESC LIMIT 100'
+// ── Admin: Summary ───────────────────────────────────────────
+async function handleSummary(env, cors) {
+  const { results: paid } = await env.DB.prepare(
+    `SELECT total, items, fulfilment, paid_at, created_at FROM orders WHERE status = 'PAID'`
   ).all();
 
-  return new Response(JSON.stringify(results), {
+  const monthStart = new Date();
+  monthStart.setUTCDate(1);
+  monthStart.setUTCHours(0, 0, 0, 0);
+
+  const byFulfilment = Object.fromEntries(FULFILMENT.map(f => [f, 0]));
+  const sellers = {};
+  let revenue = 0, monthRevenue = 0, monthOrders = 0;
+
+  for (const o of paid) {
+    revenue += o.total;
+    byFulfilment[o.fulfilment] = (byFulfilment[o.fulfilment] || 0) + 1;
+    if ((o.paid_at || o.created_at) >= monthStart.toISOString()) {
+      monthRevenue += o.total;
+      monthOrders++;
+    }
+    for (const item of safeJson(o.items, [])) {
+      const s = sellers[item.product_id] ||= { product_id: item.product_id, name: item.name, qty: 0, revenue: 0 };
+      s.qty += item.qty;
+      s.revenue += item.price * item.qty;
+    }
+  }
+
+  return json({
+    paid_orders: paid.length,
+    revenue,
+    average_order: paid.length ? revenue / paid.length : 0,
+    month_orders: monthOrders,
+    month_revenue: monthRevenue,
+    to_ship: byFulfilment.NEW + byFulfilment.PROCESSING,
+    by_fulfilment: byFulfilment,
+    best_sellers: Object.values(sellers).sort((a, b) => b.qty - a.qty).slice(0, 5)
+  }, cors);
+}
+
+// ── Admin: Orders ────────────────────────────────────────────
+async function handleAdminOrders(url, env, cors) {
+  const status = (url.searchParams.get('status') || 'PAID').toUpperCase();
+  const query = status === 'ALL'
+    ? env.DB.prepare('SELECT * FROM orders ORDER BY created_at DESC LIMIT 200')
+    : env.DB.prepare('SELECT * FROM orders WHERE status = ? ORDER BY created_at DESC LIMIT 200').bind(status);
+
+  const { results } = await query.all();
+  return json(results.map(o => ({ ...o, items: safeJson(o.items, []) })), cors);
+}
+
+async function handleUpdateOrder(id, request, env, cors) {
+  const { fulfilment } = await request.json();
+  if (!FULFILMENT.includes(fulfilment)) return json({ error: 'Invalid status' }, cors, 400);
+
+  const result = await env.DB.prepare('UPDATE orders SET fulfilment = ?, updated_at = ? WHERE id = ?')
+    .bind(fulfilment, new Date().toISOString(), id).run();
+  if (!result.meta.changes) return json({ error: 'Order not found' }, cors, 404);
+
+  return json({ ok: true }, cors);
+}
+
+// ── Admin: Products ──────────────────────────────────────────
+async function handleAdminProducts(env, cors) {
+  const { results } = await env.DB.prepare(
+    'SELECT * FROM products ORDER BY category, sort_order, created_at'
+  ).all();
+  return json(results.map(parseProduct), cors);
+}
+
+async function handleSaveProduct(id, request, env, cors) {
+  const body = await request.json();
+  const p = validateProduct(body);
+  if (p.error) return json({ error: p.error }, cors, 400);
+
+  const now = new Date().toISOString();
+
+  if (id) {
+    const result = await env.DB.prepare(`
+      UPDATE products SET category = ?, name = ?, price = ?, badge = ?, description = ?, image = ?,
+             options = ?, active = ?, sort_order = ?, updated_at = ?
+      WHERE id = ?
+    `).bind(p.category, p.name, p.price, p.badge, p.description, p.image,
+            JSON.stringify(p.options), p.active, p.sort_order, now, id).run();
+    if (!result.meta.changes) return json({ error: 'Product not found' }, cors, 404);
+    return json({ id }, cors);
+  }
+
+  // Ids must not contain dashes — cart item ids are "<productId>-<option>"
+  const newId = (p.category === 'sneakers' ? 'snk' : 'hr') + crypto.randomUUID().replace(/-/g, '').slice(0, 8);
+  await env.DB.prepare(`
+    INSERT INTO products (id, category, name, price, badge, description, image, options, active, sort_order, created_at, updated_at)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+  `).bind(newId, p.category, p.name, p.price, p.badge, p.description, p.image,
+          JSON.stringify(p.options), p.active, p.sort_order, now, now).run();
+
+  return json({ id: newId }, cors, 201);
+}
+
+async function handleDeleteProduct(id, env, cors) {
+  const result = await env.DB.prepare('DELETE FROM products WHERE id = ?').bind(id).run();
+  if (!result.meta.changes) return json({ error: 'Product not found' }, cors, 404);
+  return json({ ok: true }, cors);
+}
+
+function validateProduct(body) {
+  const category = String(body.category || '');
+  if (!CATEGORIES.includes(category)) return { error: 'Category must be sneakers or hair' };
+
+  const name = String(body.name || '').trim();
+  if (!name) return { error: 'Name is required' };
+
+  const price = Math.round(Number(body.price));
+  if (!(price > 0)) return { error: 'Price must be more than 0' };
+
+  const image = String(body.image || '').trim();
+  if (!/^https:\/\//.test(image)) return { error: 'Image must be an https:// link' };
+
+  const opts = body.options || {};
+  let options;
+  if (category === 'sneakers') {
+    const sizes = toNumberList(opts.sizes);
+    const colours = (Array.isArray(opts.colours) ? opts.colours : [])
+      .map(c => ({ name: String(c.name || '').trim(), hex: String(c.hex || '').toLowerCase() }))
+      .filter(c => c.name && /^#[0-9a-f]{6}$/.test(c.hex));
+    if (!sizes.length)   return { error: 'Add at least one size' };
+    if (!colours.length) return { error: 'Add at least one colour' };
+    options = { sizes, colours };
+  } else {
+    const lengths = toNumberList(opts.lengths);
+    if (!lengths.length) return { error: 'Add at least one length' };
+    options = { lengths };
+  }
+
+  return {
+    category, name, price, image, options,
+    badge:       String(body.badge || '').trim().slice(0, 30),
+    description: String(body.description || '').trim().slice(0, 1000),
+    active:      body.active === false || body.active === 0 ? 0 : 1,
+    sort_order:  parseInt(body.sort_order, 10) || 0,
+  };
+}
+
+// ── Helpers ──────────────────────────────────────────────────
+
+function json(data, cors, status = 200) {
+  return new Response(JSON.stringify(data), {
+    status,
     headers: { 'Content-Type': 'application/json', ...cors }
   });
 }
 
-// ── Helpers ──────────────────────────────────────────────────
+function isAdmin(request, env) {
+  if (!env.ADMIN_KEY) return false;
+  const expected = `Bearer ${env.ADMIN_KEY}`;
+  const given = request.headers.get('Authorization') || '';
+  if (given.length !== expected.length) return false;
+  // Constant-time comparison so the key can't be guessed from response timing
+  let diff = 0;
+  for (let i = 0; i < given.length; i++) diff |= given.charCodeAt(i) ^ expected.charCodeAt(i);
+  return diff === 0;
+}
+
+function parseProduct(p) {
+  return { ...p, options: safeJson(p.options, {}) };
+}
+
+function safeJson(text, fallback) {
+  try { return JSON.parse(text); } catch { return fallback; }
+}
+
+function toNumberList(value) {
+  const list = Array.isArray(value) ? value : String(value || '').split(',');
+  return [...new Set(list.map(Number).filter(n => n > 0))].sort((a, b) => a - b);
+}
 
 // Generate PayFast MD5 signature
 // PayFast signs fields in the order they're sent (its documented attribute

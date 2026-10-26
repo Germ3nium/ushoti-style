@@ -1,5 +1,3 @@
-const WORKER_URL = 'https://ushoti-style-worker.sihlek56.workers.dev';
-
 document.addEventListener('DOMContentLoaded', () => {
   const cart = JSON.parse(localStorage.getItem('ushoti_cart')) || [];
   if (cart.length === 0) window.location.href = 'products.html';
@@ -12,25 +10,28 @@ async function handleCheckout(e) {
   btn.disabled = true;
 
   const cart = JSON.parse(localStorage.getItem('ushoti_cart')) || [];
-  const subtotal = cart.reduce((s, i) => s + i.price * i.qty, 0);
-  const total = (subtotal + 80).toFixed(2);
+  const field = id => document.getElementById(id).value;
 
   try {
-    const res = await fetch(`${WORKER_URL}/api/sign-payment`, {
+    // The backend works out prices itself — we only send what was chosen
+    const res = await fetch(`${API_BASE}/api/sign-payment`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        name_first:    document.getElementById('name_first').value,
-        name_last:     document.getElementById('name_last').value,
-        email_address: document.getElementById('email_address').value,
-        cell_number:   document.getElementById('cell_number').value,
-        amount:        total,
-        item_name:     cart.map(i => `${i.name} x${i.qty}`).join(', ')
+        name_first:    field('name_first'),
+        name_last:     field('name_last'),
+        email_address: field('email_address'),
+        cell_number:   field('cell_number'),
+        street:        field('street'),
+        city:          field('city'),
+        postal_code:   field('postal_code'),
+        province:      field('province'),
+        items:         cart.map(i => ({ id: i.id, qty: i.qty }))
       })
     });
 
-    if (!res.ok) throw new Error('Could not generate payment signature');
-    const pfData = await res.json();
+    const pfData = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(pfData.error || 'Could not start payment');
 
     const form = document.createElement('form');
     form.method = 'POST';
