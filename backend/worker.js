@@ -145,7 +145,7 @@ async function handleNotify(request, env, cors) {
 async function handleGetOrders(request, env, cors) {
   // Basic auth check using admin key
   const authHeader = request.headers.get('Authorization');
-  if (authHeader !== `Bearer ${env.ADMIN_KEY}`) {
+  if (!env.ADMIN_KEY || authHeader !== `Bearer ${env.ADMIN_KEY}`) {
     return new Response('Unauthorized', { status: 401, headers: cors });
   }
 

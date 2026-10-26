@@ -1,0 +1,30 @@
+// Backend API Worker. Kept as .jsonc so Wrangler finds this file before
+// the storefront's ../wrangler.jsonc when run from this folder.
+{
+	"name": "ushoti-style-worker",
+	"main": "worker.js",
+	"compatibility_date": "2024-01-01",
+	"workers_dev": true,
+
+	// ── D1 Database binding ──────────────────────────────────────
+	"d1_databases": [
+		{
+			"binding": "DB",
+			"database_name": "ushoti-db",
+			"database_id": "2502467c-367d-4b77-92c8-b78bd1d2627b"
+		}
+	],
+
+	// ── Environment Variables (Secrets) ─────────────────────────
+	// Do NOT put real values here — set them via:
+	//   wrangler secret put PAYFAST_MERCHANT_ID
+	//   wrangler secret put PAYFAST_MERCHANT_KEY
+	//   wrangler secret put PAYFAST_PASSPHRASE
+	//   wrangler secret put ADMIN_KEY
+
+	"vars": {
+		"RETURN_URL": "https://ushoti-style.sihlek56.workers.dev/success.html",
+		"CANCEL_URL": "https://ushoti-style.sihlek56.workers.dev/cart.html",
+		"NOTIFY_URL": "https://ushoti-style-worker.sihlek56.workers.dev/api/notify"
+	}
+}
