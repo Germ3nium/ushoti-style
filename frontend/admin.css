@@ -345,6 +345,7 @@ td > .admin-pill:first-child,
 .admin-image-field { display: flex; gap: 0.75rem; align-items: center; }
 .admin-image-field input { flex: 1; }
 .admin-image-field img { width: 56px; height: 56px; object-fit: cover; border: 1px solid var(--border); }
+.admin-upload-row { display: flex; align-items: center; gap: 0.75rem; margin-top: 0.6rem; flex-wrap: wrap; }
 
 .admin-colours { display: flex; flex-direction: column; gap: 0.5rem; margin-bottom: 0.6rem; }
 

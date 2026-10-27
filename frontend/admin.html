@@ -166,10 +166,15 @@
       </div>
 
       <div class="form-group">
-        <label for="pf-image">Image link (https://…)</label>
+        <label for="pf-image">Photo</label>
         <div class="admin-image-field">
-          <input type="url" id="pf-image" required placeholder="https://"/>
+          <input type="url" id="pf-image" required placeholder="Paste an https:// link or choose a photo"/>
           <img id="pf-image-preview" alt="" hidden/>
+        </div>
+        <div class="admin-upload-row">
+          <button type="button" class="btn btn-outline admin-btn-sm" id="pf-upload-btn">Choose from gallery</button>
+          <input type="file" id="pf-upload" accept="image/*" hidden/>
+          <span class="admin-muted" id="pf-upload-status" aria-live="polite"></span>
         </div>
       </div>
 

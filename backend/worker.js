@@ -1,6 +1,7 @@
 // ── Cloudflare Worker for Ushoti Style ──────────────────────
 // Handles:
 //   GET    /api/products              → active products for the shop
+//   GET    /api/images/:id            → product photo uploaded from the admin page
 //   POST   /api/sign-payment          → creates a PENDING order, returns signed PayFast fields
 //   POST   /api/notify                → PayFast payment notification (marks order PAID)
 //   Admin (Authorization: Bearer ADMIN_KEY):
@@ -11,6 +12,7 @@
 //   POST   /api/admin/products        → create product
 //   PUT    /api/admin/products/:id    → update product
 //   DELETE /api/admin/products/:id    → delete product
+//   POST   /api/admin/images          → upload a product photo (raw image body), returns its url
 
 const PAYFAST_SANDBOX = true; // set to false when going live
 
@@ -21,6 +23,8 @@ const PF_HOST = PAYFAST_SANDBOX
 const SHIPPING_FEE = 80;
 const CATEGORIES   = ['sneakers', 'hair'];
 const FULFILMENT   = ['NEW', 'PROCESSING', 'SHIPPED', 'DELIVERED', 'CANCELLED'];
+const IMAGE_TYPES  = ['image/jpeg', 'image/png', 'image/webp'];
+const MAX_IMAGE_BYTES = 1500000; // D1 rows top out at 2 MB
 
 export default {
   async fetch(request, env) {
@@ -43,6 +47,10 @@ export default {
       // ── Public routes ──────────────────────────────────────
       if (pathname === '/api/products' && method === 'GET') {
         return await handleGetProducts(env, cors);
+      }
+
+      if (pathname.startsWith('/api/images/') && method === 'GET') {
+        return await handleGetImage(pathname.split('/')[3], env, cors);
       }
 
       if (pathname === '/api/sign-payment' && method === 'POST') {
@@ -68,6 +76,7 @@ export default {
         if (resource === 'products' && !id && method === 'POST')    return await handleSaveProduct(null, request, env, cors);
         if (resource === 'products' && id && method === 'PUT')      return await handleSaveProduct(id, request, env, cors);
         if (resource === 'products' && id && method === 'DELETE')   return await handleDeleteProduct(id, env, cors);
+        if (resource === 'images' && !id && method === 'POST')      return await handleUploadImage(request, url, env, cors);
       }
 
       return new Response('Not Found', { status: 404, headers: cors });
@@ -342,6 +351,34 @@ async function handleDeleteProduct(id, env, cors) {
   return json({ ok: true }, cors);
 }
 
+async function handleUploadImage(request, url, env, cors) {
+  const type = (request.headers.get('Content-Type') || '').split(';')[0].trim();
+  if (!IMAGE_TYPES.includes(type)) return json({ error: 'Photo must be a JPEG, PNG or WebP image' }, cors, 400);
+
+  const data = await request.arrayBuffer();
+  if (!data.byteLength) return json({ error: 'The photo is empty' }, cors, 400);
+  if (data.byteLength > MAX_IMAGE_BYTES) return json({ error: 'Photo is too large (max 1.5 MB)' }, cors, 413);
+
+  const id = crypto.randomUUID().replace(/-/g, '');
+  await env.DB.prepare('INSERT INTO images (id, content_type, data) VALUES (?, ?, ?)')
+    .bind(id, type, data).run();
+  return json({ url: `${url.origin}/api/images/${id}` }, cors, 201);
+}
+
+async function handleGetImage(id, env, cors) {
+  if (!/^[0-9a-f]{32}$/.test(id || '')) return new Response('Not Found', { status: 404, headers: cors });
+  const row = await env.DB.prepare('SELECT content_type, data FROM images WHERE id = ?').bind(id).first();
+  if (!row) return new Response('Not Found', { status: 404, headers: cors });
+  return new Response(new Uint8Array(row.data), {
+    headers: {
+      'Content-Type': row.content_type,
+      // Each upload gets a new id, so the bytes behind a url never change
+      'Cache-Control': 'public, max-age=31536000, immutable',
+      ...cors
+    }
+  });
+}
+
 function validateProduct(body) {
   const category = String(body.category || '');
   if (!CATEGORIES.includes(category)) return { error: 'Category must be sneakers or hair' };
@@ -353,7 +390,7 @@ function validateProduct(body) {
   if (!(price > 0)) return { error: 'Price must be more than 0' };
 
   const image = String(body.image || '').trim();
-  if (!/^https:\/\//.test(image)) return { error: 'Image must be an https:// link' };
+  if (!isImageUrl(image)) return { error: 'Image must be an https:// link' };
 
   const opts = body.options || {};
   let options;
@@ -387,6 +424,11 @@ function json(data, cors, status = 200) {
     status,
     headers: { 'Content-Type': 'application/json', ...cors }
   });
+}
+
+// http:// is only allowed for photos uploaded to a local `wrangler dev` backend
+function isImageUrl(url) {
+  return /^https:\/\//.test(url) || /^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?\//.test(url);
 }
 
 function isAdmin(request, env) {

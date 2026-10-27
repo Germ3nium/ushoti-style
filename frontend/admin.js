@@ -28,7 +28,8 @@ async function api(path, options = {}) {
     ...options,
     headers: {
       'Authorization': `Bearer ${adminKey}`,
-      ...(options.body ? { 'Content-Type': 'application/json' } : {})
+      ...(options.body ? { 'Content-Type': 'application/json' } : {}),
+      ...options.headers
     }
   });
   if (res.status === 401) {
@@ -353,14 +354,50 @@ function syncCategoryFields() {
 function updateImagePreview() {
   const url = $('pf-image').value.trim();
   const img = $('pf-image-preview');
-  img.hidden = !/^https:\/\//.test(url);
+  img.hidden = !/^https?:\/\//.test(url);
   if (!img.hidden) img.src = sizedImage(url, 160, 160);
+}
+
+// Phone photos are often 4–10 MB; shrink to at most 1200px and re-encode as JPEG before uploading
+async function resizePhoto(file, maxSide = 1200) {
+  const bitmap = await createImageBitmap(file);
+  const scale = Math.min(1, maxSide / Math.max(bitmap.width, bitmap.height));
+  const canvas = document.createElement('canvas');
+  canvas.width = Math.round(bitmap.width * scale);
+  canvas.height = Math.round(bitmap.height * scale);
+  const ctx = canvas.getContext('2d');
+  ctx.fillStyle = '#fff'; // transparent PNGs would otherwise turn black
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  ctx.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+  bitmap.close();
+  return new Promise((resolve, reject) =>
+    canvas.toBlob(b => b ? resolve(b) : reject(new Error('Could not read that photo')), 'image/jpeg', 0.85));
+}
+
+async function uploadPhoto(file) {
+  const status = $('pf-upload-status');
+  const button = $('pf-upload-btn');
+  const saveBtn = $('product-save');
+  button.disabled = saveBtn.disabled = true;
+  status.textContent = 'Uploading…';
+  try {
+    const blob = await resizePhoto(file);
+    const { url } = await api('images', { method: 'POST', body: blob, headers: { 'Content-Type': 'image/jpeg' } });
+    $('pf-image').value = url;
+    updateImagePreview();
+    status.textContent = 'Photo uploaded. Click Save to use it.';
+  } catch (err) {
+    status.textContent = err.message === 'Unauthorized' ? '' : `Upload failed: ${err.message}`;
+  } finally {
+    button.disabled = saveBtn.disabled = false;
+  }
 }
 
 function openProductEditor(p = null) {
   editingId = p ? p.id : null;
   form.reset();
   $('product-error').textContent = '';
+  $('pf-upload-status').textContent = '';
   $('pf-colours').innerHTML = '';
   $('product-dialog-title').textContent = p ? `Edit ${p.name}` : 'Add product';
 
@@ -389,6 +426,12 @@ $('add-product-btn').addEventListener('click', () => openProductEditor());
 $('add-colour-btn').addEventListener('click', () => addColourRow());
 $('pf-category').addEventListener('change', syncCategoryFields);
 $('pf-image').addEventListener('input', updateImagePreview);
+$('pf-upload-btn').addEventListener('click', () => $('pf-upload').click());
+$('pf-upload').addEventListener('change', e => {
+  const file = e.target.files[0];
+  e.target.value = ''; // let the same file be picked again
+  if (file) uploadPhoto(file);
+});
 $('product-cancel').addEventListener('click', () => dialog.close());
 
 form.addEventListener('submit', async e => {
