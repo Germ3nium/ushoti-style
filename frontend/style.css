@@ -1897,7 +1897,7 @@ footer {
 .spotlight-img {
   position: relative;
   overflow: hidden;
-  min-height: 320px;
+  min-height: 260px;
 }
 
 .spotlight-img img {
@@ -2203,7 +2203,8 @@ footer {
   .cart-container { padding: 0 1.5rem; }
   .checkout-container { padding: 0 1.5rem; }
   .spotlight-card { grid-template-columns: 1fr; }
-  .spotlight-img { min-height: 240px; }
+  .spotlight-img { min-height: 0; height: 190px; }
+  .spotlight-body { padding: 1.4rem 1.25rem; }
   .promo-strip-banner h3 { font-size: 1.6rem; }
   .promo-strip-actions { flex-direction: column; width: 100%; }
   .promo-strip-actions .btn { text-align: center; }
