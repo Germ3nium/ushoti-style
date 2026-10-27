@@ -1372,6 +1372,38 @@ footer {
   display: block;
 }
 
+/* Extra product photos — shown when a product has more than one */
+.modal-thumbs {
+  position: absolute;
+  left: 0.75rem;
+  right: 0.75rem;
+  bottom: 0.75rem;
+  display: flex;
+  gap: 0.4rem;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: none;
+  z-index: 2;
+}
+
+.modal-thumb {
+  flex: none;
+  width: 52px;
+  height: 52px;
+  padding: 0;
+  border: 2px solid rgba(255,255,255,0.7);
+  background: var(--bg-card);
+  cursor: pointer;
+  opacity: 0.75;
+  transition: opacity 0.2s, border-color 0.2s;
+}
+
+/* .modal-img .modal-thumb img beats the main photo's .modal-img img sizing */
+.modal-img .modal-thumb img { width: 100%; height: 100%; min-height: 0; max-height: none; object-fit: cover; display: block; }
+.modal-thumb:hover { opacity: 1; }
+.modal-thumb.active { opacity: 1; border-color: var(--gold); }
+.modal-thumb:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
+
 .modal-body {
   padding: 2rem;
   display: flex;

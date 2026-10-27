@@ -166,15 +166,16 @@
       </div>
 
       <div class="form-group">
-        <label for="pf-image">Photo</label>
-        <div class="admin-image-field">
-          <input type="url" id="pf-image" required placeholder="Paste an https:// link or choose a photo"/>
-          <img id="pf-image-preview" alt="" hidden/>
-        </div>
+        <label id="pf-photos-label">Photos <span class="admin-muted">— the first one is the cover</span></label>
+        <ul class="admin-photos" id="pf-photos" aria-labelledby="pf-photos-label"></ul>
         <div class="admin-upload-row">
           <button type="button" class="btn btn-outline admin-btn-sm" id="pf-upload-btn">Choose from gallery</button>
-          <input type="file" id="pf-upload" accept="image/*" hidden/>
+          <input type="file" id="pf-upload" accept="image/*" multiple hidden/>
           <span class="admin-muted" id="pf-upload-status" aria-live="polite"></span>
+        </div>
+        <div class="admin-image-field">
+          <input type="url" id="pf-image-link" placeholder="…or paste an https:// image link" aria-label="Image link"/>
+          <button type="button" class="btn btn-outline admin-btn-sm" id="pf-add-link">Add</button>
         </div>
       </div>
 

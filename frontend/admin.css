@@ -345,7 +345,28 @@ td > .admin-pill:first-child,
 .admin-image-field { display: flex; gap: 0.75rem; align-items: center; }
 .admin-image-field input { flex: 1; }
 .admin-image-field img { width: 56px; height: 56px; object-fit: cover; border: 1px solid var(--border); }
-.admin-upload-row { display: flex; align-items: center; gap: 0.75rem; margin-top: 0.6rem; flex-wrap: wrap; }
+.admin-upload-row { display: flex; align-items: center; gap: 0.75rem; margin: 0.6rem 0; flex-wrap: wrap; }
+
+.admin-photos { list-style: none; display: flex; flex-wrap: wrap; gap: 0.6rem; }
+.admin-photos:empty::before { content: 'No photos yet'; color: var(--text-muted); font-size: 0.85rem; }
+.admin-photo { position: relative; width: 92px; }
+.admin-photo img { width: 92px; height: 92px; object-fit: cover; display: block; border: 1px solid var(--border); }
+.admin-photo:first-child img { border: 2px solid var(--gold); }
+.admin-photo-cover {
+  position: absolute; top: 4px; left: 4px;
+  background: var(--gold); color: #fff;
+  font-size: 0.6rem; font-weight: 700; letter-spacing: 1px; text-transform: uppercase;
+  padding: 0.1rem 0.35rem;
+}
+.admin-photo-actions { display: flex; justify-content: space-between; margin-top: 0.25rem; }
+.admin-photo-actions button {
+  width: 28px; height: 28px;
+  border: 1px solid var(--border); background: var(--bg-card);
+  color: var(--text-muted); cursor: pointer; font-size: 0.9rem; line-height: 1;
+}
+.admin-photo-actions button:hover:not(:disabled) { border-color: var(--gold); color: var(--text); }
+.admin-photo-actions button:disabled { opacity: 0.35; cursor: default; }
+.admin-photo-actions .admin-photo-remove:hover { border-color: #a12a1a; color: #a12a1a; }
 
 .admin-colours { display: flex; flex-direction: column; gap: 0.5rem; margin-bottom: 0.6rem; }
 

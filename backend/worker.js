@@ -26,6 +26,7 @@ const CATEGORIES   = ['sneakers', 'hair'];
 const FULFILMENT   = ['NEW', 'PROCESSING', 'SHIPPED', 'DELIVERED', 'CANCELLED'];
 const IMAGE_TYPES  = ['image/jpeg', 'image/png', 'image/webp'];
 const MAX_IMAGE_BYTES = 1500000; // D1 rows top out at 2 MB
+const MAX_PHOTOS   = 10;
 
 export default {
   async fetch(request, env) {
@@ -95,7 +96,7 @@ export default {
 // ── Products (public) ────────────────────────────────────────
 async function handleGetProducts(env, cors) {
   const { results } = await env.DB.prepare(
-    'SELECT id, category, name, price, badge, description, image, options FROM products WHERE active = 1 ORDER BY category, sort_order, created_at'
+    'SELECT id, category, name, price, badge, description, image, images, options FROM products WHERE active = 1 ORDER BY category, sort_order, created_at'
   ).all();
 
   return json(results.map(parseProduct), {
@@ -352,9 +353,9 @@ async function handleSaveProduct(id, request, env, cors) {
   if (id) {
     const result = await env.DB.prepare(`
       UPDATE products SET category = ?, name = ?, price = ?, badge = ?, description = ?, image = ?,
-             options = ?, active = ?, sort_order = ?, updated_at = ?
+             images = ?, options = ?, active = ?, sort_order = ?, updated_at = ?
       WHERE id = ?
-    `).bind(p.category, p.name, p.price, p.badge, p.description, p.image,
+    `).bind(p.category, p.name, p.price, p.badge, p.description, p.image, JSON.stringify(p.images),
             JSON.stringify(p.options), p.active, p.sort_order, now, id).run();
     if (!result.meta.changes) return json({ error: 'Product not found' }, cors, 404);
     return json({ id }, cors);
@@ -363,9 +364,9 @@ async function handleSaveProduct(id, request, env, cors) {
   // Ids must not contain dashes — cart item ids are "<productId>-<option>"
   const newId = (p.category === 'sneakers' ? 'snk' : 'hr') + crypto.randomUUID().replace(/-/g, '').slice(0, 8);
   await env.DB.prepare(`
-    INSERT INTO products (id, category, name, price, badge, description, image, options, active, sort_order, created_at, updated_at)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-  `).bind(newId, p.category, p.name, p.price, p.badge, p.description, p.image,
+    INSERT INTO products (id, category, name, price, badge, description, image, images, options, active, sort_order, created_at, updated_at)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+  `).bind(newId, p.category, p.name, p.price, p.badge, p.description, p.image, JSON.stringify(p.images),
           JSON.stringify(p.options), p.active, p.sort_order, now, now).run();
 
   return json({ id: newId }, cors, 201);
@@ -415,8 +416,13 @@ function validateProduct(body) {
   const price = Math.round(Number(body.price));
   if (!(price > 0)) return { error: 'Price must be more than 0' };
 
-  const image = String(body.image || '').trim();
-  if (!isImageUrl(image)) return { error: 'Image must be an https:// link' };
+  // The first photo is the cover shown on product cards
+  const list = Array.isArray(body.images) ? body.images : [body.image];
+  const images = [...new Set(list.map(u => String(u || '').trim()).filter(Boolean))];
+  if (!images.length) return { error: 'Add at least one photo' };
+  if (images.length > MAX_PHOTOS) return { error: `Add at most ${MAX_PHOTOS} photos` };
+  if (!images.every(isImageUrl)) return { error: 'Photo links must start with https://' };
+  const image = images[0];
 
   const opts = body.options || {};
   let options;
@@ -435,7 +441,7 @@ function validateProduct(body) {
   }
 
   return {
-    category, name, price, image, options,
+    category, name, price, image, images, options,
     badge:       String(body.badge || '').trim().slice(0, 30),
     description: String(body.description || '').trim().slice(0, 1000),
     active:      body.active === false || body.active === 0 ? 0 : 1,
@@ -469,7 +475,8 @@ function isAdmin(request, env) {
 }
 
 function parseProduct(p) {
-  return { ...p, options: safeJson(p.options, {}) };
+  const images = safeJson(p.images, []);
+  return { ...p, options: safeJson(p.options, {}), images: images.length ? images : [p.image] };
 }
 
 function safeJson(text, fallback) {

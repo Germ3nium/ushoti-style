@@ -160,6 +160,38 @@ function openProductModal(id) {
   }).catch(() => showToast('Couldn\'t load product details. Please try again.'));
 }
 
+// ── Modal photo gallery ─────────────────────────────────────
+function modalGalleryHtml(p) {
+  const photos = p.images && p.images.length ? p.images : [p.image];
+  const name = escapeHtml(p.name);
+  return `
+    <img class="modal-main-img" src="${escapeHtml(sizedImage(photos[0], 600, 500))}" alt="${name}" onerror="${IMG_ONERROR}"/>
+    ${p.badge ? `<span class="product-badge">${escapeHtml(p.badge)}</span>` : ''}
+    ${photos.length > 1 ? `
+    <div class="modal-thumbs">
+      ${photos.map((url, i) => `
+        <button type="button" class="modal-thumb${i === 0 ? ' active' : ''}" data-src="${escapeHtml(sizedImage(url, 600, 500))}"
+                aria-label="Show photo ${i + 1} of ${photos.length}"${i === 0 ? ' aria-current="true"' : ''}>
+          <img src="${escapeHtml(sizedImage(url, 96, 96))}" alt="" onerror="${IMG_ONERROR}"/>
+        </button>`).join('')}
+    </div>` : ''}`;
+}
+
+function bindModalGallery(overlay) {
+  const main = overlay.querySelector('.modal-main-img');
+  overlay.querySelectorAll('.modal-thumb').forEach(btn => {
+    btn.addEventListener('click', () => {
+      overlay.querySelectorAll('.modal-thumb').forEach(b => {
+        b.classList.toggle('active', b === btn);
+        b.toggleAttribute('aria-current', b === btn);
+      });
+      main.onerror = null;
+      main.setAttribute('onerror', IMG_ONERROR);
+      main.src = btn.dataset.src;
+    });
+  });
+}
+
 // ── Hair Modal ──────────────────────────────────────────────
 function openHairModal(p) {
   const id = p.id;
@@ -171,8 +203,7 @@ function openHairModal(p) {
     <div class="modal" role="dialog" aria-modal="true">
       <div class="modal-img">
         <button class="modal-close" aria-label="Close">&times;</button>
-        <img src="${escapeHtml(sizedImage(p.image, 600, 500))}" alt="${escapeHtml(p.name)}" onerror="${IMG_ONERROR}"/>
-        ${p.badge ? `<span class="product-badge">${escapeHtml(p.badge)}</span>` : ''}
+        ${modalGalleryHtml(p)}
       </div>
       <div class="modal-body">
         <div>
@@ -193,6 +224,7 @@ function openHairModal(p) {
   `;
 
   document.body.appendChild(overlay);
+  bindModalGallery(overlay);
   requestAnimationFrame(() => overlay.classList.add('open'));
 
   const infoEl = overlay.querySelector('#modal-sel-info');
@@ -238,8 +270,7 @@ function openSneakerModal(p) {
     <div class="modal" role="dialog" aria-modal="true">
       <div class="modal-img">
         <button class="modal-close" aria-label="Close">&times;</button>
-        <img src="${escapeHtml(sizedImage(p.image, 600, 500))}" alt="${escapeHtml(p.name)}" onerror="${IMG_ONERROR}"/>
-        ${p.badge ? `<span class="product-badge">${escapeHtml(p.badge)}</span>` : ''}
+        ${modalGalleryHtml(p)}
       </div>
       <div class="modal-body">
         <div>
@@ -270,6 +301,7 @@ function openSneakerModal(p) {
   `;
 
   document.body.appendChild(overlay);
+  bindModalGallery(overlay);
   requestAnimationFrame(() => overlay.classList.add('open'));
 
   const infoEl  = overlay.querySelector('#modal-sel-info');

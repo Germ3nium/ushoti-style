@@ -10,6 +10,7 @@ const PAYMENT_LABELS = { PAID: 'Paid', PENDING: 'Not paid', FAILED: 'Failed' };
 let adminKey = readKey();
 let orders = [];
 let products = [];
+let photos = []; // photo urls for the product being edited; photos[0] is the cover
 
 // ── Session ──────────────────────────────────────────────────
 function readKey() {
@@ -351,11 +352,38 @@ function syncCategoryFields() {
   $('pf-hair-fields').hidden = sneakers;
 }
 
-function updateImagePreview() {
-  const url = $('pf-image').value.trim();
-  const img = $('pf-image-preview');
-  img.hidden = !/^https?:\/\//.test(url);
-  if (!img.hidden) img.src = sizedImage(url, 160, 160);
+const MAX_PHOTOS = 10;
+
+function renderPhotos() {
+  $('pf-photos').innerHTML = photos.map((url, i) => `
+    <li class="admin-photo">
+      <img src="${escapeHtml(sizedImage(url, 184, 184))}" alt="Photo ${i + 1}" onerror="${IMG_ONERROR}"/>
+      ${i === 0 ? '<span class="admin-photo-cover">Cover</span>' : ''}
+      <div class="admin-photo-actions">
+        <button type="button" data-move="${i}" ${i === 0 ? 'disabled' : ''} aria-label="Move photo ${i + 1} earlier" title="Move earlier">&larr;</button>
+        <button type="button" class="admin-photo-remove" data-remove="${i}" aria-label="Remove photo ${i + 1}" title="Remove">&times;</button>
+      </div>
+    </li>`).join('');
+  $('pf-upload-btn').disabled = photos.length >= MAX_PHOTOS;
+}
+
+$('pf-photos').addEventListener('click', e => {
+  const btn = e.target.closest('button');
+  if (!btn) return;
+  if (btn.dataset.remove !== undefined) {
+    photos.splice(Number(btn.dataset.remove), 1);
+  } else {
+    const i = Number(btn.dataset.move);
+    [photos[i - 1], photos[i]] = [photos[i], photos[i - 1]];
+  }
+  renderPhotos();
+});
+
+function addPhoto(url) {
+  if (photos.includes(url)) return;
+  if (photos.length >= MAX_PHOTOS) throw new Error(`a product can have at most ${MAX_PHOTOS} photos`);
+  photos.push(url);
+  renderPhotos();
 }
 
 // Phone photos are often 4–10 MB; shrink to at most 1200px and re-encode as JPEG before uploading
@@ -374,22 +402,27 @@ async function resizePhoto(file, maxSide = 1200) {
     canvas.toBlob(b => b ? resolve(b) : reject(new Error('Could not read that photo')), 'image/jpeg', 0.85));
 }
 
-async function uploadPhoto(file) {
+async function uploadPhotos(files) {
   const status = $('pf-upload-status');
   const button = $('pf-upload-btn');
   const saveBtn = $('product-save');
   button.disabled = saveBtn.disabled = true;
-  status.textContent = 'Uploading…';
+  let done = 0;
   try {
-    const blob = await resizePhoto(file);
-    const { url } = await api('images', { method: 'POST', body: blob, headers: { 'Content-Type': 'image/jpeg' } });
-    $('pf-image').value = url;
-    updateImagePreview();
-    status.textContent = 'Photo uploaded. Click Save to use it.';
+    for (const file of files) {
+      status.textContent = `Uploading ${done + 1} of ${files.length}…`;
+      const blob = await resizePhoto(file);
+      const { url } = await api('images', { method: 'POST', body: blob, headers: { 'Content-Type': 'image/jpeg' } });
+      addPhoto(url);
+      done++;
+    }
+    status.textContent = `${done === 1 ? 'Photo' : `${done} photos`} added. Click Save to keep ${done === 1 ? 'it' : 'them'}.`;
   } catch (err) {
-    status.textContent = err.message === 'Unauthorized' ? '' : `Upload failed: ${err.message}`;
+    status.textContent = err.message === 'Unauthorized' ? ''
+      : `${done ? `${done} added, then u` : 'U'}pload failed: ${err.message}`;
   } finally {
-    button.disabled = saveBtn.disabled = false;
+    saveBtn.disabled = false;
+    renderPhotos();
   }
 }
 
@@ -409,7 +442,8 @@ function openProductEditor(p = null) {
   $('pf-badge').value       = p ? p.badge : '';
   $('pf-sort').value        = p ? p.sort_order : '';
   $('pf-description').value = p ? p.description : '';
-  $('pf-image').value       = p ? p.image : '';
+  $('pf-image-link').value  = '';
+  photos = p ? [...(p.images || [p.image])] : [];
   $('pf-active').checked    = p ? !!p.active : true;
   $('pf-sizes').value       = (opts.sizes || (p ? [] : [4, 5, 6, 7, 8, 9, 10, 11, 12, 13])).join(', ');
   $('pf-lengths').value     = (opts.lengths || []).join(', ');
@@ -417,7 +451,7 @@ function openProductEditor(p = null) {
   if (!p) addColourRow();
 
   syncCategoryFields();
-  updateImagePreview();
+  renderPhotos();
   dialog.showModal();
   $('pf-name').focus();
 }
@@ -425,12 +459,33 @@ function openProductEditor(p = null) {
 $('add-product-btn').addEventListener('click', () => openProductEditor());
 $('add-colour-btn').addEventListener('click', () => addColourRow());
 $('pf-category').addEventListener('change', syncCategoryFields);
-$('pf-image').addEventListener('input', updateImagePreview);
 $('pf-upload-btn').addEventListener('click', () => $('pf-upload').click());
 $('pf-upload').addEventListener('change', e => {
-  const file = e.target.files[0];
-  e.target.value = ''; // let the same file be picked again
-  if (file) uploadPhoto(file);
+  const files = [...e.target.files].slice(0, MAX_PHOTOS - photos.length);
+  e.target.value = ''; // let the same files be picked again
+  if (files.length) uploadPhotos(files);
+});
+
+function addPhotoLink() {
+  const input = $('pf-image-link');
+  const url = input.value.trim();
+  if (!url) return;
+  if (!/^https:\/\//.test(url)) {
+    $('pf-upload-status').textContent = 'Image links must start with https://';
+    return;
+  }
+  try {
+    addPhoto(url);
+    input.value = '';
+    $('pf-upload-status').textContent = '';
+  } catch (err) {
+    $('pf-upload-status').textContent = `Couldn't add it: ${err.message}`;
+  }
+}
+
+$('pf-add-link').addEventListener('click', addPhotoLink);
+$('pf-image-link').addEventListener('keydown', e => {
+  if (e.key === 'Enter') { e.preventDefault(); addPhotoLink(); } // don't submit the whole form
 });
 $('product-cancel').addEventListener('click', () => dialog.close());
 
@@ -439,6 +494,10 @@ form.addEventListener('submit', async e => {
   const saveBtn = $('product-save');
   const errorEl = $('product-error');
   errorEl.textContent = '';
+  if (!photos.length) {
+    errorEl.textContent = 'Add at least one photo';
+    return;
+  }
 
   const category = $('pf-category').value;
   const payload = {
@@ -448,7 +507,7 @@ form.addEventListener('submit', async e => {
     badge:       $('pf-badge').value.trim(),
     sort_order:  Number($('pf-sort').value) || 0,
     description: $('pf-description').value.trim(),
-    image:       $('pf-image').value.trim(),
+    images:      photos,
     active:      $('pf-active').checked,
     options: category === 'sneakers'
       ? {
