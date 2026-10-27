@@ -68,10 +68,17 @@ function sizedImage(url, w, h) {
 function productCardHtml(p, { featured = false } = {}) {
   const name = escapeHtml(p.name);
   const label = p.category === 'sneakers' ? 'Footwear' : 'Hair &amp; Wigs';
+  const photos = productPhotos(p);
   return `
-    <div class="product-card" data-category="${p.category}" data-id="${escapeHtml(p.id)}" tabindex="0" role="button" aria-label="${name}, ${formatRand(p.price)}">
+    <div class="product-card" data-category="${p.category}" data-id="${escapeHtml(p.id)}" tabindex="0" role="button" aria-label="${name}, ${formatRand(p.price)}${photos.length > 1 ? `, ${photos.length} photos` : ''}">
       <div class="product-card-img">
         <img src="${escapeHtml(sizedImage(p.image, 400, 260))}" alt="${name}" loading="lazy" onerror="${IMG_ONERROR}"/>
+        ${photos.length > 1 ? `
+        <img class="product-card-img-alt" src="${escapeHtml(sizedImage(photos[1], 400, 260))}" alt="" loading="lazy" onerror="this.remove()"/>
+        <span class="photo-count" title="${photos.length} photos">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/><circle cx="12" cy="13" r="4"/></svg>
+          ${photos.length}
+        </span>` : ''}
         ${p.badge ? `<span class="product-badge">${escapeHtml(p.badge)}</span>` : ''}
         ${featured ? `
         <button class="wishlist-btn" data-wishlist="${name}" title="Add to Wishlist" aria-label="Add to Wishlist">
@@ -161,35 +168,71 @@ function openProductModal(id) {
 }
 
 // ── Modal photo gallery ─────────────────────────────────────
+function productPhotos(p) {
+  return p.images && p.images.length ? p.images : [p.image];
+}
+
 function modalGalleryHtml(p) {
-  const photos = p.images && p.images.length ? p.images : [p.image];
+  const photos = productPhotos(p);
   const name = escapeHtml(p.name);
+  const many = photos.length > 1;
   return `
-    <img class="modal-main-img" src="${escapeHtml(sizedImage(photos[0], 600, 500))}" alt="${name}" onerror="${IMG_ONERROR}"/>
+    <img class="modal-main-img" src="${escapeHtml(sizedImage(photos[0], 600, 500))}" alt="${name}, photo 1 of ${photos.length}" onerror="${IMG_ONERROR}"/>
     ${p.badge ? `<span class="product-badge">${escapeHtml(p.badge)}</span>` : ''}
-    ${photos.length > 1 ? `
+    ${many ? `
+    <button type="button" class="modal-nav modal-nav-prev" aria-label="Previous photo">&#8249;</button>
+    <button type="button" class="modal-nav modal-nav-next" aria-label="Next photo">&#8250;</button>
+    <span class="modal-counter" aria-live="polite">1 / ${photos.length}</span>
     <div class="modal-thumbs">
       ${photos.map((url, i) => `
-        <button type="button" class="modal-thumb${i === 0 ? ' active' : ''}" data-src="${escapeHtml(sizedImage(url, 600, 500))}"
+        <button type="button" class="modal-thumb${i === 0 ? ' active' : ''}" data-index="${i}"
                 aria-label="Show photo ${i + 1} of ${photos.length}"${i === 0 ? ' aria-current="true"' : ''}>
           <img src="${escapeHtml(sizedImage(url, 96, 96))}" alt="" onerror="${IMG_ONERROR}"/>
         </button>`).join('')}
     </div>` : ''}`;
 }
 
-function bindModalGallery(overlay) {
+// Arrows, thumbnails, swipe and the ← → keys all move through the same photos
+function bindModalGallery(overlay, p) {
+  const photos = productPhotos(p);
+  if (photos.length < 2) return;
   const main = overlay.querySelector('.modal-main-img');
-  overlay.querySelectorAll('.modal-thumb').forEach(btn => {
-    btn.addEventListener('click', () => {
-      overlay.querySelectorAll('.modal-thumb').forEach(b => {
-        b.classList.toggle('active', b === btn);
-        b.toggleAttribute('aria-current', b === btn);
-      });
-      main.onerror = null;
-      main.setAttribute('onerror', IMG_ONERROR);
-      main.src = btn.dataset.src;
+  const counter = overlay.querySelector('.modal-counter');
+  const thumbs = [...overlay.querySelectorAll('.modal-thumb')];
+  let current = 0;
+
+  const show = i => {
+    current = (i + photos.length) % photos.length;
+    main.setAttribute('onerror', IMG_ONERROR);
+    main.src = sizedImage(photos[current], 600, 500);
+    main.alt = `${p.name}, photo ${current + 1} of ${photos.length}`;
+    counter.textContent = `${current + 1} / ${photos.length}`;
+    thumbs.forEach((t, n) => {
+      t.classList.toggle('active', n === current);
+      t.toggleAttribute('aria-current', n === current);
     });
+    thumbs[current].scrollIntoView({ block: 'nearest', inline: 'nearest' });
+  };
+
+  overlay.querySelector('.modal-nav-prev').addEventListener('click', () => show(current - 1));
+  overlay.querySelector('.modal-nav-next').addEventListener('click', () => show(current + 1));
+  thumbs.forEach(t => t.addEventListener('click', () => show(Number(t.dataset.index))));
+
+  let touchX = null;
+  main.addEventListener('touchstart', e => { touchX = e.touches[0].clientX; }, { passive: true });
+  main.addEventListener('touchend', e => {
+    if (touchX === null) return;
+    const dx = e.changedTouches[0].clientX - touchX;
+    touchX = null;
+    if (Math.abs(dx) > 40) show(current + (dx < 0 ? 1 : -1));
   });
+
+  const onKey = e => {
+    if (!document.body.contains(overlay)) return document.removeEventListener('keydown', onKey);
+    if (e.key === 'ArrowLeft')  show(current - 1);
+    if (e.key === 'ArrowRight') show(current + 1);
+  };
+  document.addEventListener('keydown', onKey);
 }
 
 // ── Hair Modal ──────────────────────────────────────────────
@@ -224,7 +267,7 @@ function openHairModal(p) {
   `;
 
   document.body.appendChild(overlay);
-  bindModalGallery(overlay);
+  bindModalGallery(overlay, p);
   requestAnimationFrame(() => overlay.classList.add('open'));
 
   const infoEl = overlay.querySelector('#modal-sel-info');
@@ -301,7 +344,7 @@ function openSneakerModal(p) {
   `;
 
   document.body.appendChild(overlay);
-  bindModalGallery(overlay);
+  bindModalGallery(overlay, p);
   requestAnimationFrame(() => overlay.classList.add('open'));
 
   const infoEl  = overlay.querySelector('#modal-sel-info');

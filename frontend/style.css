@@ -637,6 +637,35 @@ body > *:not(#particles-canvas):not(.modal-overlay):not(#toast):not(.sidebar-ove
   transform: translateX(100%);
 }
 
+/* Products with several photos: show the second one on hover (mouse only) */
+.product-card-img-alt {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  transition: opacity 0.4s ease, transform 0.6s ease;
+}
+
+@media (hover: hover) {
+  .product-card:hover .product-card-img-alt { opacity: 1; }
+}
+
+.photo-count {
+  position: absolute;
+  right: 0.75rem;
+  bottom: 0.75rem;
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.2rem 0.5rem;
+  background: rgba(0,0,0,0.55);
+  color: #fff;
+  font-size: 0.7rem;
+  font-weight: 600;
+  z-index: 2;
+}
+
+.photo-count svg { width: 13px; height: 13px; fill: none; stroke: currentColor; stroke-width: 2; }
+
 .product-badge {
   position: absolute;
   top: 1rem;
@@ -1373,6 +1402,40 @@ footer {
 }
 
 /* Extra product photos — shown when a product has more than one */
+.modal-nav {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 40px;
+  height: 40px;
+  border: none;
+  border-radius: 50%;
+  background: rgba(0,0,0,0.45);
+  color: #fff;
+  font-size: 1.6rem;
+  line-height: 1;
+  cursor: pointer;
+  z-index: 2;
+  transition: background 0.2s;
+}
+.modal-nav:hover { background: rgba(0,0,0,0.7); }
+.modal-nav:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
+.modal-nav-prev { left: 0.75rem; }
+.modal-nav-next { right: 0.75rem; }
+
+.modal-counter {
+  position: absolute;
+  top: 0.8rem;
+  right: 3.2rem; /* clear of the close button */
+  padding: 0.25rem 0.55rem;
+  background: rgba(0,0,0,0.5);
+  color: #fff;
+  font-size: 0.72rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  z-index: 2;
+}
+
 .modal-thumbs {
   position: absolute;
   left: 0.75rem;
