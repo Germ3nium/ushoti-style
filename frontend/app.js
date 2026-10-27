@@ -54,6 +54,10 @@ function formatRand(amount) {
   return `R${String(Math.round(amount)).replace(/\B(?=(\d{3})+(?!\d))/g, ',')}`;
 }
 
+// Shown when a product image link is broken
+const IMAGE_FALLBACK = 'https://placehold.co/600x500/f2ede4/8a6f2e?text=Ushoti+Style';
+const IMG_ONERROR = `this.onerror=null;this.src='${IMAGE_FALLBACK}'`;
+
 // Resize Unsplash images; other image links are used as-is
 function sizedImage(url, w, h) {
   return /images\.unsplash\.com/.test(url)
@@ -67,7 +71,7 @@ function productCardHtml(p, { featured = false } = {}) {
   return `
     <div class="product-card" data-category="${p.category}" data-id="${escapeHtml(p.id)}" tabindex="0" role="button" aria-label="${name}, ${formatRand(p.price)}">
       <div class="product-card-img">
-        <img src="${escapeHtml(sizedImage(p.image, 400, 260))}" alt="${name}" loading="lazy"/>
+        <img src="${escapeHtml(sizedImage(p.image, 400, 260))}" alt="${name}" loading="lazy" onerror="${IMG_ONERROR}"/>
         ${p.badge ? `<span class="product-badge">${escapeHtml(p.badge)}</span>` : ''}
         ${featured ? `
         <button class="wishlist-btn" data-wishlist="${name}" title="Add to Wishlist" aria-label="Add to Wishlist">
@@ -167,7 +171,7 @@ function openHairModal(p) {
     <div class="modal" role="dialog" aria-modal="true">
       <div class="modal-img">
         <button class="modal-close" aria-label="Close">&times;</button>
-        <img src="${escapeHtml(sizedImage(p.image, 600, 500))}" alt="${escapeHtml(p.name)}"/>
+        <img src="${escapeHtml(sizedImage(p.image, 600, 500))}" alt="${escapeHtml(p.name)}" onerror="${IMG_ONERROR}"/>
         ${p.badge ? `<span class="product-badge">${escapeHtml(p.badge)}</span>` : ''}
       </div>
       <div class="modal-body">
@@ -234,7 +238,7 @@ function openSneakerModal(p) {
     <div class="modal" role="dialog" aria-modal="true">
       <div class="modal-img">
         <button class="modal-close" aria-label="Close">&times;</button>
-        <img src="${escapeHtml(sizedImage(p.image, 600, 500))}" alt="${escapeHtml(p.name)}"/>
+        <img src="${escapeHtml(sizedImage(p.image, 600, 500))}" alt="${escapeHtml(p.name)}" onerror="${IMG_ONERROR}"/>
         ${p.badge ? `<span class="product-badge">${escapeHtml(p.badge)}</span>` : ''}
       </div>
       <div class="modal-body">

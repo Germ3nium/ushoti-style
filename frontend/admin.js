@@ -265,7 +265,7 @@ function renderProducts() {
 
   body.innerHTML = visible.map(p => `
     <tr class="${p.active ? '' : 'admin-row-muted'}">
-      <td><img class="admin-thumb" src="${escapeHtml(sizedImage(p.image, 80, 80))}" alt=""/></td>
+      <td><img class="admin-thumb" src="${escapeHtml(sizedImage(p.image, 80, 80))}" alt="" onerror="${IMG_ONERROR}"/></td>
       <td>
         <strong>${escapeHtml(p.name)}</strong>
         ${p.badge ? `<span class="admin-pill">${escapeHtml(p.badge)}</span>` : ''}

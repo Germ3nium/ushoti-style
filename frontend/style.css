@@ -568,12 +568,13 @@ body > *:not(#particles-canvas):not(.modal-overlay):not(#toast):not(.sidebar-ove
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
   gap: 1px;
-  background: var(--border);
-  border: 1px solid var(--border);
 }
 
+/* Each card draws its own 1px outline, filling the gaps between cards, so an
+   unfilled last row leaves blank space instead of a coloured block */
 .product-card {
   background: var(--bg-card);
+  box-shadow: 0 0 0 1px var(--border);
   overflow: hidden;
   cursor: pointer;
   position: relative;
@@ -582,7 +583,7 @@ body > *:not(#particles-canvas):not(.modal-overlay):not(#toast):not(.sidebar-ove
 
 .product-card:hover {
   background: var(--bg);
-  box-shadow: 0 10px 30px rgba(184,146,42,0.12);
+  box-shadow: 0 0 0 1px var(--border), 0 10px 30px rgba(184,146,42,0.12);
   transform: translateY(-2px);
 }
 
