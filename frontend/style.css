@@ -1025,13 +1025,13 @@ body > *:not(#particles-canvas):not(.modal-overlay):not(#toast):not(.sidebar-ove
 .category-card-img-content h3 {
   font-family: 'Playfair Display', serif;
   font-size: 1.8rem;
-  color: var(--text);
+  color: #fff;
   margin-bottom: 0.3rem;
   letter-spacing: 1px;
 }
 
 .category-card-img-content p {
-  color: var(--text-muted);
+  color: rgba(255,255,255,0.78);
   font-size: 0.82rem;
   margin-bottom: 1.2rem;
   font-weight: 300;
