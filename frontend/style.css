@@ -34,6 +34,9 @@ body {
   background-color: var(--bg);
   color: var(--text);
   -webkit-font-smoothing: antialiased;
+  /* Slide-in (reveal-right) cards start off-screen; clip them instead of letting
+     the page scroll sideways. clip, unlike hidden, keeps the sticky nav working. */
+  overflow-x: clip;
 }
 
 /* ── NAVIGATION ─────────────────────────────────────────────── */
@@ -2113,6 +2116,10 @@ footer {
 
 @media (max-width: 480px) {
   .hero h1 { font-size: 2rem; letter-spacing: 3px; }
+  /* Logo + three links don't fit a phone; the logo goes home and the ☰ menu lists collections */
+  nav { padding: 0.9rem 16px; }
+  .logo { font-size: 1.2rem; letter-spacing: 2px; white-space: nowrap; }
+  .nav-links a:not(.cart-link) { display: none; }
   .nav-links a span { display: none; }
   .trust-perks { grid-template-columns: 1fr; }
   .newsletter-form { flex-direction: column; }

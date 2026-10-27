@@ -44,7 +44,7 @@ const ctx    = canvas.getContext('2d');
 let particles = [];
 
 function resizeCanvas() {
-  canvas.width  = window.innerWidth;
+  canvas.width  = document.documentElement.clientWidth; // excludes the scrollbar, so no sideways scroll
   canvas.height = window.innerHeight;
 }
 
