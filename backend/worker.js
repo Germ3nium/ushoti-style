@@ -2,6 +2,7 @@
 // Handles:
 //   GET    /api/products              → active products for the shop
 //   GET    /api/images/:id            → product photo uploaded from the admin page
+//   GET    /api/orders/:ref           → receipt for one order (the ref is an unguessable UUID)
 //   POST   /api/sign-payment          → creates a PENDING order, returns signed PayFast fields
 //   POST   /api/notify                → PayFast payment notification (marks order PAID)
 //   Admin (Authorization: Bearer ADMIN_KEY):
@@ -51,6 +52,10 @@ export default {
 
       if (pathname.startsWith('/api/images/') && method === 'GET') {
         return await handleGetImage(pathname.split('/')[3], env, cors);
+      }
+
+      if (pathname.startsWith('/api/orders/') && method === 'GET') {
+        return await handleGetReceipt(pathname.split('/')[3], env, cors);
       }
 
       if (pathname === '/api/sign-payment' && method === 'POST') {
@@ -157,8 +162,29 @@ async function handleSignPayment(request, env, cors) {
   return json({
     ...pfData,
     signature,
+    order_ref: orderRef,
     payfast_url: `https://${PF_HOST}/eng/process`
   }, cors);
+}
+
+// ── Receipt ──────────────────────────────────────────────────
+// Only someone who has the order's UUID (the buyer, via PayFast's return link) can see it.
+async function handleGetReceipt(ref, env, cors) {
+  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/.test(ref || '')) {
+    return json({ error: 'Order not found' }, cors, 404);
+  }
+  const o = await env.DB.prepare(`
+    SELECT order_ref, status, items, subtotal, shipping, total, amount_paid, payment_id,
+           name_first, name_last, email, street, city, postal_code, province, created_at, paid_at
+    FROM orders WHERE order_ref = ?
+  `).bind(ref).first();
+  if (!o) return json({ error: 'Order not found' }, cors, 404);
+
+  return new Response(JSON.stringify({
+    ...o,
+    order_number: o.order_ref.slice(0, 8).toUpperCase(),
+    items: safeJson(o.items, []),
+  }), { headers: { 'Content-Type': 'application/json', 'Cache-Control': 'no-store', ...cors } });
 }
 
 // Turns cart lines like { id: 'snk1-9-#ffffff', qty: 1 } into priced items,

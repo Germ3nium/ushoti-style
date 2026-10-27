@@ -37,6 +37,9 @@ async function handleCheckout(e) {
     form.method = 'POST';
     form.action = pfData.payfast_url;
     delete pfData.payfast_url;
+    // The success page uses this to show the receipt when PayFast sends the customer back
+    try { localStorage.setItem('ushoti_last_order', pfData.order_ref); } catch { /* ignore */ }
+    delete pfData.order_ref;
 
     Object.entries(pfData).forEach(([key, val]) => {
       const input = document.createElement('input');

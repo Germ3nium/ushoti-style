@@ -58,15 +58,55 @@
   </nav>
 
   <div class="success-container">
-    <svg class="success-icon" viewBox="0 0 64 64">
+    <svg class="success-icon" viewBox="0 0 64 64" aria-hidden="true">
       <circle cx="32" cy="32" r="30"/>
       <polyline points="20 33 28 41 44 25" stroke-linecap="round" stroke-linejoin="round"/>
     </svg>
-    <p class="section-label">Payment Successful</p>
-    <h2>Order Confirmed</h2>
+    <p class="section-label" id="receipt-label">Payment Successful</p>
+    <h2 id="receipt-heading">Order Confirmed</h2>
     <p style="margin-top:1rem;">Thank you for shopping with <span style="color:var(--gold)">Ushoti Style</span>.</p>
-    <p>A confirmation has been sent to your email address. Your order will be dispatched within 1–2 business days.</p>
-    <a href="products.html" class="btn" style="margin-top:2rem;">Continue Shopping</a>
+    <p id="receipt-message">Your order will be dispatched within 1–2 business days.</p>
+
+    <section class="receipt" id="receipt" hidden aria-labelledby="receipt-title">
+      <div class="receipt-head">
+        <div>
+          <span class="logo">Ushoti Style</span>
+          <h3 id="receipt-title">Receipt</h3>
+        </div>
+        <dl class="receipt-meta">
+          <div><dt>Order</dt><dd id="r-number"></dd></div>
+          <div><dt>Date</dt><dd id="r-date"></dd></div>
+          <div><dt>Payment</dt><dd id="r-status"></dd></div>
+        </dl>
+      </div>
+
+      <table class="receipt-table">
+        <thead><tr><th scope="col">Item</th><th scope="col" class="num">Qty</th><th scope="col" class="num">Price</th><th scope="col" class="num">Total</th></tr></thead>
+        <tbody id="r-items"></tbody>
+        <tfoot>
+          <tr><th scope="row" colspan="3">Subtotal</th><td class="num" id="r-subtotal"></td></tr>
+          <tr><th scope="row" colspan="3">Delivery</th><td class="num" id="r-shipping"></td></tr>
+          <tr class="receipt-total"><th scope="row" colspan="3">Total</th><td class="num" id="r-total"></td></tr>
+        </tfoot>
+      </table>
+
+      <div class="receipt-foot">
+        <div>
+          <h4>Billed to</h4>
+          <p id="r-customer"></p>
+        </div>
+        <div>
+          <h4>Delivering to</h4>
+          <p id="r-address"></p>
+        </div>
+      </div>
+      <p class="receipt-ref" id="r-payment-ref"></p>
+    </section>
+
+    <div class="receipt-actions">
+      <button type="button" class="btn btn-outline" id="print-receipt" hidden>Print / Save as PDF</button>
+      <a href="products.html" class="btn">Continue Shopping</a>
+    </div>
   </div>
 
   <footer>
@@ -94,8 +134,6 @@
   </footer>
 
   <script src="app.js"></script>
-  <script>
-    localStorage.removeItem('ushoti_cart');
-  </script>
+  <script src="success.js"></script>
 </body>
 </html>

@@ -226,23 +226,38 @@ body > *:not(#particles-canvas):not(.modal-overlay):not(#toast):not(.sidebar-ove
 .slide {
   position: absolute;
   inset: 0;
-  background-size: cover;
-  background-position: center;
+  overflow: hidden;
+  background-size: 0 0; /* the photo (inline style) is drawn by ::before so it can zoom */
   opacity: 0;
   transition: opacity 1s ease;
   display: flex;
   align-items: center;
 }
 
+/* Zooming with transform instead of background-size keeps the photo covering
+   the slide on tall phone screens (a %-width background left gaps and repeated) */
+.slide::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image: inherit;
+  background-size: cover;
+  background-position: var(--slide-focus, center);
+  background-repeat: no-repeat;
+}
+
 .slide.active {
   opacity: 1;
   z-index: 1;
+}
+
+.slide.active::before {
   animation: kenburns 6s ease forwards;
 }
 
 @keyframes kenburns {
-  from { background-size: 110%; }
-  to   { background-size: 100%; }
+  from { transform: scale(1.1); }
+  to   { transform: scale(1); }
 }
 
 /* Slide content entrance animation */
@@ -374,6 +389,7 @@ body > *:not(#particles-canvas):not(.modal-overlay):not(#toast):not(.sidebar-ove
 
 @media (max-width: 768px) {
   .hero-slider { height: 80vh; }
+  .slide { --slide-focus: 72% center; } /* product photos keep the shoe on the right */
   .slide-content { padding: 0 2rem; }
   .slide-content h1 { font-size: 2.6rem; }
   .slider-dots { left: 2rem; }
@@ -2114,3 +2130,85 @@ footer {
 
 /* Make the hidden attribute win over display rules like .spotlight-card's grid */
 [hidden] { display: none !important; }
+
+/* ── RECEIPT (success page) ────────────────────────────────────── */
+.receipt {
+  margin: 2.5rem 0 0;
+  padding: 1.75rem;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  text-align: left;
+  font-size: 0.88rem;
+}
+
+.receipt-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 1.5rem;
+  flex-wrap: wrap;
+  padding-bottom: 1.25rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.receipt-head h3 {
+  font-family: 'Playfair Display', serif;
+  font-size: 1.3rem;
+  margin-top: 0.25rem;
+}
+
+.receipt-meta { display: grid; gap: 0.3rem; }
+.receipt-meta div { display: flex; gap: 0.75rem; justify-content: space-between; }
+.receipt-meta dt,
+.receipt h4 {
+  font-size: 0.68rem;
+  letter-spacing: 1.2px;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  font-weight: 500;
+}
+.receipt-meta dd { font-variant-numeric: tabular-nums; }
+
+.receipt-table { width: 100%; border-collapse: collapse; margin: 1rem 0; }
+.receipt-table th,
+.receipt-table td { padding: 0.55rem 0; text-align: left; vertical-align: top; }
+.receipt-table thead th {
+  font-size: 0.68rem;
+  letter-spacing: 1.2px;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  font-weight: 500;
+  border-bottom: 1px solid var(--border);
+}
+.receipt-table tbody td { border-bottom: 1px solid var(--border); }
+.receipt-table tfoot th { font-weight: 400; color: var(--text-muted); text-align: right; padding-right: 1rem; }
+.receipt-table .num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; padding-left: 0.75rem; }
+.receipt-table .receipt-total th,
+.receipt-table .receipt-total td { font-weight: 600; color: var(--text); font-size: 1rem; border-top: 1px solid var(--border); }
+.receipt-option { display: block; font-size: 0.78rem; color: var(--text-muted); }
+
+.receipt-foot {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.25rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--border);
+}
+.receipt-foot h4 { margin-bottom: 0.3rem; }
+.receipt-foot p,
+.success-container .receipt-foot p { color: var(--text); font-size: 0.88rem; margin: 0; line-height: 1.6; }
+.receipt-ref,
+.success-container .receipt-ref { margin-top: 1rem; font-size: 0.75rem; }
+
+.receipt-actions { display: flex; gap: 0.75rem; justify-content: center; flex-wrap: wrap; margin-top: 2rem; }
+
+@media (max-width: 560px) {
+  .receipt { padding: 1.25rem; }
+  .receipt-foot { grid-template-columns: 1fr; }
+}
+
+@media print {
+  nav, footer, .sidebar-overlay, .receipt-actions, .success-icon { display: none !important; }
+  body { background: #fff; }
+  .success-container { margin: 0 auto; max-width: none; }
+  .receipt { border: none; padding: 0; }
+}
