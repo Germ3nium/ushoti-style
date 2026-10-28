@@ -167,6 +167,10 @@ body.admin {
   vertical-align: middle;
 }
 
+.admin-pill-sale { background: #fbe4e1; color: #b3261e; }
+.admin-was { color: var(--text-muted); font-size: 0.8rem; margin-right: 0.2rem; }
+.admin-hint { font-size: 0.75rem; margin-top: 0.35rem; }
+
 td > .admin-pill:first-child,
 .admin-status-list .admin-pill { margin-left: 0; }
 
@@ -329,7 +333,8 @@ td > .admin-pill:first-child,
   margin-bottom: 1.25rem;
 }
 
-.admin-dialog textarea {
+.admin-dialog textarea,
+.admin-settings-card textarea {
   width: 100%;
   padding: 0.75rem 1rem;
   background: var(--bg);
@@ -340,7 +345,8 @@ td > .admin-pill:first-child,
   resize: vertical;
 }
 
-.admin-dialog textarea:focus { outline: none; border-color: var(--gold); }
+.admin-dialog textarea:focus,
+.admin-settings-card textarea:focus { outline: none; border-color: var(--gold); }
 
 .admin-image-field { display: flex; gap: 0.75rem; align-items: center; }
 .admin-image-field input { flex: 1; }
@@ -423,3 +429,5 @@ td > .admin-pill:first-child,
   .admin-dialog .form-row { grid-template-columns: 1fr; gap: 0; }
   .admin-table th, .admin-table td { padding: 0.6rem 0.6rem; }
 }
+.admin-settings-card { max-width: 520px; }
+.admin-settings-card h3 + .form-group { margin-bottom: 1.5rem; }

@@ -22,7 +22,37 @@ const API_BASE = ['localhost', '127.0.0.1', ''].includes(location.hostname)
   ? 'http://localhost:8787'
   : 'https://ushoti-style-worker.sihlek56.workers.dev';
 
-const SHIPPING_FEE = 80;
+// Delivery fee and banner messages are set on the admin Settings tab.
+// R80 shows until the real fee loads; the backend always charges its own stored fee.
+let shippingFee = 80;
+let settingsPromise = null;
+
+function loadSettings() {
+  if (!settingsPromise) {
+    settingsPromise = fetch(`${API_BASE}/api/settings`)
+      .then(res => res.ok ? res.json() : Promise.reject(new Error(`HTTP ${res.status}`)))
+      .then(settings => {
+        if (Number.isFinite(settings.shipping_fee)) shippingFee = settings.shipping_fee;
+        return settings;
+      });
+  }
+  return settingsPromise;
+}
+
+// The track holds the messages twice so the scroll loops without a gap
+function renderBanner(messages) {
+  const track = document.getElementById('marquee-track');
+  if (!track) return;
+  const strip = track.closest('.marquee-strip');
+  strip.hidden = !messages.length;
+  if (!messages.length) return;
+  const once = messages
+    .map(m => `<span>${escapeHtml(m)}</span><span class="dot-sep">&bull;</span>`)
+    .join('');
+  // Repeat short lists so the strip is always filled edge to edge
+  const repeats = Math.max(1, Math.ceil(6 / messages.length));
+  track.innerHTML = once.repeat(repeats * 2);
+}
 
 let productsPromise = null;
 let productsById = {};
@@ -65,12 +95,33 @@ function sizedImage(url, w, h) {
     : url;
 }
 
+// was_price is only sent while a product is on sale
+function isOnSale(p) {
+  return p.was_price > p.price;
+}
+
+function priceHtml(p) {
+  return isOnSale(p)
+    ? `<s class="was-price">${formatRand(p.was_price)}</s> <span class="sale-price">${formatRand(p.price)}</span>`
+    : formatRand(p.price);
+}
+
+function tagsHtml(p) {
+  const sale = isOnSale(p)
+    ? `<span class="sale-tag">Sale &minus;${Math.round((1 - p.price / p.was_price) * 100)}%</span>`
+    : '';
+  const badge = p.badge
+    ? `<span class="product-badge${sale ? ' product-badge-below' : ''}">${escapeHtml(p.badge)}</span>`
+    : '';
+  return sale + badge;
+}
+
 function productCardHtml(p, { featured = false } = {}) {
   const name = escapeHtml(p.name);
   const label = p.category === 'sneakers' ? 'Footwear' : 'Hair &amp; Wigs';
   const photos = productPhotos(p);
   return `
-    <div class="product-card" data-category="${p.category}" data-id="${escapeHtml(p.id)}" tabindex="0" role="button" aria-label="${name}, ${formatRand(p.price)}${photos.length > 1 ? `, ${photos.length} photos` : ''}">
+    <div class="product-card" data-category="${p.category}" data-id="${escapeHtml(p.id)}" tabindex="0" role="button" aria-label="${name}, ${isOnSale(p) ? `on sale, was ${formatRand(p.was_price)}, now ` : ''}${formatRand(p.price)}${photos.length > 1 ? `, ${photos.length} photos` : ''}">
       <div class="product-card-img">
         <img src="${escapeHtml(sizedImage(p.image, 400, 260))}" alt="${name}" loading="lazy" onerror="${IMG_ONERROR}"/>
         ${photos.length > 1 ? `
@@ -79,7 +130,7 @@ function productCardHtml(p, { featured = false } = {}) {
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/><circle cx="12" cy="13" r="4"/></svg>
           ${photos.length}
         </span>` : ''}
-        ${p.badge ? `<span class="product-badge">${escapeHtml(p.badge)}</span>` : ''}
+        ${tagsHtml(p)}
         ${featured ? `
         <button class="wishlist-btn" data-wishlist="${name}" title="Add to Wishlist" aria-label="Add to Wishlist">
           <svg viewBox="0 0 24 24"><path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z"/></svg>
@@ -89,8 +140,8 @@ function productCardHtml(p, { featured = false } = {}) {
         ${featured ? `<div class="product-meta-header"><span class="product-cat">${label}</span></div>` : ''}
         <h3>${name}</h3>
         ${featured
-          ? `<div class="price-stock-row"><div class="price">${formatRand(p.price)}</div></div>`
-          : `<div class="price">${formatRand(p.price)}</div>`}
+          ? `<div class="price-stock-row"><div class="price">${priceHtml(p)}</div></div>`
+          : `<div class="price">${priceHtml(p)}</div>`}
       </div>
     </div>`;
 }
@@ -116,7 +167,8 @@ function bindProductCards(container) {
   });
 }
 
-// Fills any <div data-products="sneakers|hair"> grid on the page
+// Fills any <div data-products="sneakers|hair"> grid on the page;
+// add data-sale to show only that category's sale items
 function renderCategoryGrids() {
   const grids = document.querySelectorAll('[data-products]');
   if (!grids.length) return;
@@ -128,10 +180,13 @@ function renderCategoryGrids() {
 
   loadProducts().then(list => {
     grids.forEach(grid => {
-      const items = list.filter(p => p.category === grid.dataset.products);
+      const saleOnly = grid.hasAttribute('data-sale');
+      const items = list.filter(p => p.category === grid.dataset.products && (!saleOnly || isOnSale(p)));
       grid.innerHTML = items.length
         ? items.map(p => productCardHtml(p)).join('')
-        : '<p class="products-status">No products here yet — check back soon.</p>';
+        : `<p class="products-status">${saleOnly
+            ? 'Nothing on sale right now — check back soon.'
+            : 'No products here yet — check back soon.'}</p>`;
     });
   }).catch(() => {
     grids.forEach(grid => {
@@ -150,7 +205,7 @@ function syncPromoProducts() {
   loadProducts().then(() => {
     prices.forEach(el => {
       const p = productsById[el.dataset.productPrice];
-      if (p) el.textContent = formatRand(p.price);
+      if (p) el.innerHTML = priceHtml(p);
     });
     cards.forEach(el => {
       el.hidden = !productsById[el.dataset.productCard];
@@ -178,7 +233,7 @@ function modalGalleryHtml(p) {
   const many = photos.length > 1;
   return `
     <img class="modal-main-img" src="${escapeHtml(sizedImage(photos[0], 600, 500))}" alt="${name}, photo 1 of ${photos.length}" onerror="${IMG_ONERROR}"/>
-    ${p.badge ? `<span class="product-badge">${escapeHtml(p.badge)}</span>` : ''}
+    ${tagsHtml(p)}
     ${many ? `
     <button type="button" class="modal-nav modal-nav-prev" aria-label="Previous photo">&#8249;</button>
     <button type="button" class="modal-nav modal-nav-next" aria-label="Next photo">&#8250;</button>
@@ -251,7 +306,7 @@ function openHairModal(p) {
       <div class="modal-body">
         <div>
           <div class="modal-title">${escapeHtml(p.name)}</div>
-          <div class="modal-price">${formatRand(p.price)}</div>
+          <div class="modal-price">${priceHtml(p)}</div>
           ${p.description ? `<p style="font-size:0.82rem;color:var(--text-muted);line-height:1.6;margin-top:0.6rem;">${escapeHtml(p.description)}</p>` : ''}
         </div>
         <div>
@@ -318,7 +373,7 @@ function openSneakerModal(p) {
       <div class="modal-body">
         <div>
           <div class="modal-title">${escapeHtml(p.name)}</div>
-          <div class="modal-price">${formatRand(p.price)}</div>
+          <div class="modal-price">${priceHtml(p)}</div>
           ${p.description ? `<p style="font-size:0.82rem;color:var(--text-muted);line-height:1.6;margin-top:0.6rem;">${escapeHtml(p.description)}</p>` : ''}
         </div>
 
@@ -485,7 +540,7 @@ function renderCart() {
   `).join('');
 
   const subtotal = cart.reduce((sum, i) => sum + i.price * i.qty, 0);
-  const shipping = subtotal > 0 ? SHIPPING_FEE : 0;
+  const shipping = subtotal > 0 ? shippingFee : 0;
   const total = subtotal + shipping;
 
   if (summaryEl) {
@@ -520,7 +575,7 @@ function renderOrderSummary() {
   if (!box) return;
 
   const subtotal = cart.reduce((sum, i) => sum + i.price * i.qty, 0);
-  const shipping = SHIPPING_FEE;
+  const shipping = shippingFee;
   const total = subtotal + shipping;
 
   box.innerHTML = `
@@ -549,6 +604,11 @@ document.addEventListener('DOMContentLoaded', () => {
   updateCartBadge();
   renderCart();
   renderOrderSummary();
+  if (document.getElementById('cart-summary') || document.getElementById('order-summary') || document.getElementById('marquee-track')) {
+    loadSettings()
+      .then(settings => { renderCart(); renderOrderSummary(); renderBanner(settings.banner || []); })
+      .catch(() => { /* keep the defaults written into the page */ });
+  }
   renderCategoryGrids();
   syncPromoProducts();
 });

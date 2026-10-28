@@ -1,6 +1,7 @@
 // ── Cloudflare Worker for Ushoti Style ──────────────────────
 // Handles:
 //   GET    /api/products              → active products for the shop
+//   GET    /api/settings              → shop settings shoppers need (delivery fee, banner messages)
 //   GET    /api/images/:id            → product photo uploaded from the admin page
 //   GET    /api/orders/:ref           → receipt for one order (the ref is an unguessable UUID)
 //   POST   /api/sign-payment          → creates a PENDING order, returns signed PayFast fields
@@ -14,6 +15,7 @@
 //   PUT    /api/admin/products/:id    → update product
 //   DELETE /api/admin/products/:id    → delete product
 //   POST   /api/admin/images          → upload a product photo (raw image body), returns its url
+//   PUT    /api/admin/settings        → update shop settings (delivery fee, banner messages)
 
 const PAYFAST_SANDBOX = true; // set to false when going live
 
@@ -21,7 +23,11 @@ const PF_HOST = PAYFAST_SANDBOX
   ? 'sandbox.payfast.co.za'
   : 'www.payfast.co.za';
 
-const SHIPPING_FEE = 80;
+const DEFAULT_SHIPPING_FEE = 80; // used until the admin sets one
+const MAX_SHIPPING_FEE = 10000;
+const DEFAULT_BANNER = ['Premium Sneakers', 'Hair Extensions & Wigs', 'Secure PayFast Checkout', 'Nationwide Delivery', 'New Arrivals Weekly'];
+const MAX_BANNER_MESSAGES = 12;
+const MAX_BANNER_LENGTH = 80;
 const CATEGORIES   = ['sneakers', 'hair'];
 const FULFILMENT   = ['NEW', 'PROCESSING', 'SHIPPED', 'DELIVERED', 'CANCELLED'];
 const IMAGE_TYPES  = ['image/jpeg', 'image/png', 'image/webp'];
@@ -49,6 +55,10 @@ export default {
       // ── Public routes ──────────────────────────────────────
       if (pathname === '/api/products' && method === 'GET') {
         return await handleGetProducts(env, cors);
+      }
+
+      if (pathname === '/api/settings' && method === 'GET') {
+        return await handleGetSettings(env, cors);
       }
 
       if (pathname.startsWith('/api/images/') && method === 'GET') {
@@ -83,6 +93,7 @@ export default {
         if (resource === 'products' && id && method === 'PUT')      return await handleSaveProduct(id, request, env, cors);
         if (resource === 'products' && id && method === 'DELETE')   return await handleDeleteProduct(id, env, cors);
         if (resource === 'images' && !id && method === 'POST')      return await handleUploadImage(request, url, env, cors);
+        if (resource === 'settings' && !id && method === 'PUT')     return await handleSaveSettings(request, env, cors);
       }
 
       return new Response('Not Found', { status: 404, headers: cors });
@@ -96,13 +107,82 @@ export default {
 // ── Products (public) ────────────────────────────────────────
 async function handleGetProducts(env, cors) {
   const { results } = await env.DB.prepare(
-    'SELECT id, category, name, price, badge, description, image, images, options FROM products WHERE active = 1 ORDER BY category, sort_order, created_at'
+    'SELECT id, category, name, price, sale_price, badge, description, image, images, options FROM products WHERE active = 1 ORDER BY category, sort_order, created_at'
   ).all();
 
-  return json(results.map(parseProduct), {
+  // Shoppers see the price they pay; was_price is set only while on sale
+  const shop = results.map(parseProduct).map(p => {
+    const { sale_price, ...rest } = p;
+    return onSale(p) ? { ...rest, price: sale_price, was_price: p.price } : rest;
+  });
+
+  return json(shop, {
     ...cors,
     'Cache-Control': 'no-cache' // admin changes show on the next page load
   });
+}
+
+// ── Settings ─────────────────────────────────────────────────
+async function getSettings(env) {
+  let rows = [];
+  try {
+    ({ results: rows } = await env.DB.prepare('SELECT key, value FROM settings').all());
+  } catch { /* settings table not created yet — use the defaults */ }
+  const stored = Object.fromEntries(rows.map(r => [r.key, r.value]));
+
+  const fee = Number(stored.shipping_fee);
+  const banner = safeJson(stored.banner, null);
+  return {
+    shipping_fee: stored.shipping_fee !== undefined && Number.isFinite(fee) ? fee : DEFAULT_SHIPPING_FEE,
+    banner: Array.isArray(banner) ? banner : DEFAULT_BANNER,
+  };
+}
+
+async function getShippingFee(env) {
+  return (await getSettings(env)).shipping_fee;
+}
+
+async function handleGetSettings(env, cors) {
+  return json(await getSettings(env), {
+    ...cors,
+    'Cache-Control': 'no-cache'
+  });
+}
+
+// Saves whichever settings are sent; the others are left as they are
+async function handleSaveSettings(request, env, cors) {
+  const body = await request.json();
+  const updates = {};
+
+  if (body.shipping_fee !== undefined) {
+    const fee = Number(body.shipping_fee);
+    if (!(Number.isInteger(fee) && fee >= 0 && fee <= MAX_SHIPPING_FEE)) {
+      return json({ error: `Delivery fee must be a whole number of rands from 0 to ${MAX_SHIPPING_FEE}` }, cors, 400);
+    }
+    updates.shipping_fee = String(fee);
+  }
+
+  if (body.banner !== undefined) {
+    if (!Array.isArray(body.banner)) return json({ error: 'Banner must be a list of messages' }, cors, 400);
+    const banner = body.banner.map(m => String(m || '').trim()).filter(Boolean);
+    if (banner.length > MAX_BANNER_MESSAGES) {
+      return json({ error: `Use at most ${MAX_BANNER_MESSAGES} banner messages` }, cors, 400);
+    }
+    if (banner.some(m => m.length > MAX_BANNER_LENGTH)) {
+      return json({ error: `Each banner message must be ${MAX_BANNER_LENGTH} characters or fewer` }, cors, 400);
+    }
+    updates.banner = JSON.stringify(banner);
+  }
+
+  const now = new Date().toISOString();
+  const save = env.DB.prepare(`
+    INSERT INTO settings (key, value, updated_at) VALUES (?, ?, ?)
+    ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = excluded.updated_at
+  `);
+  const writes = Object.entries(updates).map(([key, value]) => save.bind(key, value, now));
+  if (writes.length) await env.DB.batch(writes);
+
+  return json(await getSettings(env), cors);
 }
 
 // ── Sign Payment ─────────────────────────────────────────────
@@ -119,7 +199,8 @@ async function handleSignPayment(request, env, cors) {
   if (items.error) return json({ error: items.error }, cors, 400);
 
   const subtotal = items.reduce((s, i) => s + i.price * i.qty, 0);
-  const total    = subtotal + SHIPPING_FEE;
+  const shipping = await getShippingFee(env);
+  const total    = subtotal + shipping;
   const orderRef = crypto.randomUUID();
   const itemName = items.map(i => `${i.name} x${i.qty}`).join(', ');
   const now      = new Date().toISOString();
@@ -131,7 +212,7 @@ async function handleSignPayment(request, env, cors) {
       created_at, updated_at
     ) VALUES (?, 'PENDING', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `).bind(
-    orderRef, JSON.stringify(items), itemName, subtotal, SHIPPING_FEE, total,
+    orderRef, JSON.stringify(items), itemName, subtotal, shipping, total,
     sanitize(body.name_first), sanitize(body.name_last), sanitize(body.email_address),
     sanitize(body.cell_number), sanitize(body.street), sanitize(body.city),
     sanitize(body.postal_code), sanitize(body.province), now, now
@@ -218,7 +299,7 @@ async function priceCartItems(cartItems, env) {
       option = `${length}"`;
     }
 
-    priced.push({ product_id: p.id, name: p.name, option, price: p.price, qty });
+    priced.push({ product_id: p.id, name: p.name, option, price: onSale(p) ? p.sale_price : p.price, qty });
   }
   return priced;
 }
@@ -352,10 +433,10 @@ async function handleSaveProduct(id, request, env, cors) {
 
   if (id) {
     const result = await env.DB.prepare(`
-      UPDATE products SET category = ?, name = ?, price = ?, badge = ?, description = ?, image = ?,
+      UPDATE products SET category = ?, name = ?, price = ?, sale_price = ?, badge = ?, description = ?, image = ?,
              images = ?, options = ?, active = ?, sort_order = ?, updated_at = ?
       WHERE id = ?
-    `).bind(p.category, p.name, p.price, p.badge, p.description, p.image, JSON.stringify(p.images),
+    `).bind(p.category, p.name, p.price, p.sale_price, p.badge, p.description, p.image, JSON.stringify(p.images),
             JSON.stringify(p.options), p.active, p.sort_order, now, id).run();
     if (!result.meta.changes) return json({ error: 'Product not found' }, cors, 404);
     return json({ id }, cors);
@@ -364,9 +445,9 @@ async function handleSaveProduct(id, request, env, cors) {
   // Ids must not contain dashes — cart item ids are "<productId>-<option>"
   const newId = (p.category === 'sneakers' ? 'snk' : 'hr') + crypto.randomUUID().replace(/-/g, '').slice(0, 8);
   await env.DB.prepare(`
-    INSERT INTO products (id, category, name, price, badge, description, image, images, options, active, sort_order, created_at, updated_at)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-  `).bind(newId, p.category, p.name, p.price, p.badge, p.description, p.image, JSON.stringify(p.images),
+    INSERT INTO products (id, category, name, price, sale_price, badge, description, image, images, options, active, sort_order, created_at, updated_at)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+  `).bind(newId, p.category, p.name, p.price, p.sale_price, p.badge, p.description, p.image, JSON.stringify(p.images),
           JSON.stringify(p.options), p.active, p.sort_order, now, now).run();
 
   return json({ id: newId }, cors, 201);
@@ -416,6 +497,14 @@ function validateProduct(body) {
   const price = Math.round(Number(body.price));
   if (!(price > 0)) return { error: 'Price must be more than 0' };
 
+  // Blank sale price = not on sale
+  let sale_price = null;
+  if (body.sale_price !== null && body.sale_price !== undefined && String(body.sale_price).trim() !== '') {
+    sale_price = Math.round(Number(body.sale_price));
+    if (!(sale_price > 0)) return { error: 'Sale price must be more than 0' };
+    if (sale_price >= price) return { error: 'Sale price must be lower than the normal price' };
+  }
+
   // The first photo is the cover shown on product cards
   const list = Array.isArray(body.images) ? body.images : [body.image];
   const images = [...new Set(list.map(u => String(u || '').trim()).filter(Boolean))];
@@ -441,7 +530,7 @@ function validateProduct(body) {
   }
 
   return {
-    category, name, price, image, images, options,
+    category, name, price, sale_price, image, images, options,
     badge:       String(body.badge || '').trim().slice(0, 30),
     description: String(body.description || '').trim().slice(0, 1000),
     active:      body.active === false || body.active === 0 ? 0 : 1,
@@ -472,6 +561,10 @@ function isAdmin(request, env) {
   let diff = 0;
   for (let i = 0; i < given.length; i++) diff |= given.charCodeAt(i) ^ expected.charCodeAt(i);
   return diff === 0;
+}
+
+function onSale(p) {
+  return p.sale_price > 0 && p.sale_price < p.price;
 }
 
 function parseProduct(p) {

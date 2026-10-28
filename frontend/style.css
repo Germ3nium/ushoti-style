@@ -2322,3 +2322,34 @@ footer {
   .success-container { margin: 0 auto; max-width: none; }
   .receipt { border: none; padding: 0; }
 }
+
+/* ── Sale prices ─────────────────────────────────────────── */
+.sale-tag {
+  position: absolute;
+  top: 1rem;
+  left: 1rem;
+  z-index: 2;
+  background: #b3261e;
+  color: #fff;
+  font-size: 0.6rem;
+  font-weight: 700;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  padding: 0.3rem 0.6rem;
+}
+
+.product-badge-below { top: 2.9rem; }
+
+.was-price {
+  color: var(--text-muted);
+  font-weight: 400;
+  font-size: 0.85em;
+  margin-right: 0.3rem;
+}
+
+.sale-price { color: #b3261e; }
+
+@media (max-width: 480px) {
+  .sale-tag { top: 0.5rem; left: 0.5rem; font-size: 0.55rem; letter-spacing: 1px; }
+  .product-badge-below { top: 2.2rem; }
+}

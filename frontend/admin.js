@@ -78,7 +78,7 @@ document.getElementById('login-form').addEventListener('submit', async e => {
 document.getElementById('logout-btn').addEventListener('click', () => signOut());
 
 // ── Tabs ─────────────────────────────────────────────────────
-const loaders = { overview: loadOverview, orders: loadOrders, products: loadAllProducts };
+const loaders = { overview: loadOverview, orders: loadOrders, products: loadAllProducts, settings: loadSettings };
 
 function switchTab(name) {
   document.querySelectorAll('.admin-tab').forEach(t => t.classList.toggle('active', t.dataset.tab === name));
@@ -92,6 +92,38 @@ document.querySelectorAll('.admin-tab').forEach(tab => {
 
 document.querySelectorAll('[data-refresh]').forEach(btn => {
   btn.addEventListener('click', () => loaders[btn.dataset.refresh]().catch(err => showToast(err.message)));
+});
+
+// ── Settings ─────────────────────────────────────────────────
+async function loadSettings() {
+  const res = await fetch(`${API_BASE}/api/settings`);
+  if (!res.ok) throw new Error(`Couldn't load settings (${res.status})`);
+  const settings = await res.json();
+  document.getElementById('set-shipping').value = settings.shipping_fee;
+  document.getElementById('set-banner').value = (settings.banner || []).join('\n');
+}
+
+document.getElementById('settings-form').addEventListener('submit', async e => {
+  e.preventDefault();
+  const btn = e.submitter;
+  const errorEl = document.getElementById('settings-error');
+  errorEl.textContent = '';
+  btn.disabled = true;
+  try {
+    const saved = await api('settings', {
+      method: 'PUT',
+      body: JSON.stringify({
+        shipping_fee: Number(document.getElementById('set-shipping').value),
+        banner: document.getElementById('set-banner').value.split('\n').map(m => m.trim()).filter(Boolean)
+      })
+    });
+    document.getElementById('set-banner').value = saved.banner.join('\n');
+    showToast('Settings saved');
+  } catch (err) {
+    if (err.message !== 'Unauthorized') errorEl.textContent = err.message;
+  } finally {
+    btn.disabled = false;
+  }
 });
 
 // ── Overview ─────────────────────────────────────────────────
@@ -271,9 +303,12 @@ function renderProducts() {
       <td>
         <strong>${escapeHtml(p.name)}</strong>
         ${p.badge ? `<span class="admin-pill">${escapeHtml(p.badge)}</span>` : ''}
+        ${p.sale_price && p.sale_price < p.price ? '<span class="admin-pill admin-pill-sale">Sale</span>' : ''}
       </td>
       <td>${p.category === 'sneakers' ? 'Sneakers' : 'Hair'}</td>
-      <td class="num">${formatRand(p.price)}</td>
+      <td class="num">${p.sale_price && p.sale_price < p.price
+        ? `<s class="admin-was">${formatRand(p.price)}</s> ${formatRand(p.sale_price)}`
+        : formatRand(p.price)}</td>
       <td>
         <label class="admin-switch">
           <input type="checkbox" data-toggle="${escapeHtml(p.id)}" ${p.active ? 'checked' : ''} aria-label="Show ${escapeHtml(p.name)} in shop"/>
@@ -439,6 +474,7 @@ function openProductEditor(p = null) {
   $('pf-category').disabled = !!p; // switching category would break existing cart items
   $('pf-name').value        = p ? p.name : '';
   $('pf-price').value       = p ? p.price : '';
+  $('pf-sale-price').value  = p && p.sale_price ? p.sale_price : '';
   $('pf-badge').value       = p ? p.badge : '';
   $('pf-sort').value        = p ? p.sort_order : '';
   $('pf-description').value = p ? p.description : '';
@@ -504,6 +540,7 @@ form.addEventListener('submit', async e => {
     category,
     name:        $('pf-name').value.trim(),
     price:       Number($('pf-price').value),
+    sale_price:  $('pf-sale-price').value.trim() || null,
     badge:       $('pf-badge').value.trim(),
     sort_order:  Number($('pf-sort').value) || 0,
     description: $('pf-description').value.trim(),

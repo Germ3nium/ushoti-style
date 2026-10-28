@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>On Sale | Ushoti Style</title>
+  <link rel="stylesheet" href="style.css"/>
+  <style>
+    .product-card { cursor: pointer; }
+  </style>
+</head>
+<body>
+
+  <div class="sidebar-overlay" id="sidebar-overlay">
+    <div class="sidebar">
+      <div class="sidebar-header">
+        <span>Shop by Category</span>
+        <button class="sidebar-close" onclick="closeSidebar()">&times;</button>
+      </div>
+      <div class="sidebar-section open">
+        <button class="sidebar-section-toggle" onclick="toggleSidebarSection(this)">
+          Sneakers
+          <svg viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"/></svg>
+        </button>
+        <div class="sidebar-links">
+          <a href="sneakers.html">View All Sneakers</a>
+          <a href="sneakers.html" class="promo">New Arrivals</a>
+          <a href="sale.html" class="promo">On Sale</a>
+        </div>
+      </div>
+      <div class="sidebar-section">
+        <button class="sidebar-section-toggle" onclick="toggleSidebarSection(this)">
+          Hair
+          <svg viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"/></svg>
+        </button>
+        <div class="sidebar-links">
+          <a href="hair.html">View All Hair</a>
+          <a href="hair.html" class="promo">New Arrivals</a>
+          <a href="hair.html" class="promo">On Sale</a>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <nav>
+    <div class="nav-left">
+      <button class="sidebar-menu-btn" onclick="openSidebar()" aria-label="Open menu">
+        <svg viewBox="0 0 24 24"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+      </button>
+      <a href="index.html" class="logo">Ushoti Style</a>
+    </div>
+    <div class="nav-links">
+      <a href="index.html">Home</a>
+      <a href="products.html">Collections</a>
+      <a href="cart.html" class="cart-link">
+        <svg viewBox="0 0 24 24"><path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 01-8 0"/></svg>
+        <span>Cart</span>
+        <span class="cart-count">0</span>
+      </a>
+    </div>
+  </nav>
+
+  <div class="section" id="sale">
+    <p class="section-label">Sneakers</p>
+    <h2 class="section-title">On Sale</h2>
+    <div class="section-divider"></div>
+    <div class="product-grid" data-products="sneakers" data-sale aria-live="polite"></div>
+  </div>
+
+  <footer>
+    <div class="footer-inner">
+      <div class="footer-brand">
+        <a href="index.html" class="logo">Ushoti Style</a>
+        <p>Premium sneakers and hair, delivered with care across South Africa. Style is not a luxury — it is a standard.</p>
+      </div>
+      <div class="footer-col">
+        <h5>Shop</h5>
+        <a href="sneakers.html">Sneakers</a>
+        <a href="hair.html">Hair</a>
+        <a href="sale.html">On Sale</a>
+        <a href="cart.html">My Cart</a>
+      </div>
+      <div class="footer-col">
+        <h5>Information</h5>
+        <a href="#">Shipping Policy</a>
+        <a href="#">Returns &amp; Exchanges</a>
+        <a href="#">Privacy Policy</a>
+        <a href="#">Contact Us</a>
+      </div>
+    </div>
+    <div class="footer-bottom">
+      <p>&copy; 2025 <span>Ushoti Style</span>. All rights reserved.</p>
+      <p>Proudly South African</p>
+    </div>
+  </footer>
+
+  <script src="app.js"></script>
+</body>
+</html>

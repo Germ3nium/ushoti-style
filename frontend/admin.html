@@ -33,6 +33,7 @@
         <button class="admin-tab active" data-tab="overview" role="tab">Overview</button>
         <button class="admin-tab" data-tab="orders" role="tab">Orders</button>
         <button class="admin-tab" data-tab="products" role="tab">Products</button>
+        <button class="admin-tab" data-tab="settings" role="tab">Settings</button>
       </nav>
       <button id="logout-btn" class="btn btn-ghost admin-btn-sm">Sign out</button>
     </header>
@@ -122,6 +123,30 @@
         </div>
       </section>
 
+      <!-- Settings -->
+      <section id="tab-settings" class="admin-panel" hidden>
+        <div class="admin-panel-head">
+          <h2>Settings</h2>
+        </div>
+        <form id="settings-form" class="admin-card admin-settings-card">
+          <h3>Delivery</h3>
+          <div class="form-group">
+            <label for="set-shipping">Delivery fee (R)</label>
+            <input type="number" id="set-shipping" min="0" max="10000" step="1" required/>
+            <p class="admin-muted admin-hint">Added once to every order. Enter 0 for free delivery.</p>
+          </div>
+
+          <h3>Home page banner</h3>
+          <div class="form-group">
+            <label for="set-banner">Moving banner messages &mdash; one per line</label>
+            <textarea id="set-banner" rows="7" placeholder="e.g. New Arrivals Weekly"></textarea>
+            <p class="admin-muted admin-hint">Up to 12 messages, 80 characters each. Leave empty to hide the banner.</p>
+          </div>
+          <p id="settings-error" class="admin-error" role="alert"></p>
+          <button type="submit" class="btn admin-btn-sm">Save</button>
+        </form>
+      </section>
+
     </main>
   </div>
 
@@ -147,6 +172,12 @@
       <div class="form-group">
         <label for="pf-name">Name</label>
         <input type="text" id="pf-name" maxlength="80" required/>
+      </div>
+
+      <div class="form-group">
+        <label for="pf-sale-price">Sale price (R) &mdash; leave blank if not on sale</label>
+        <input type="number" id="pf-sale-price" min="1" step="1" placeholder="e.g. 999"/>
+        <p class="admin-muted admin-hint">Sale items show the old price crossed out and appear on the On Sale page.</p>
       </div>
 
       <div class="form-row">
