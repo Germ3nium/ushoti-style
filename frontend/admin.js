@@ -117,6 +117,9 @@ document.getElementById('settings-form').addEventListener('submit', async e => {
         banner: document.getElementById('set-banner').value.split('\n').map(m => m.trim()).filter(Boolean)
       })
     });
+    if (!Array.isArray(saved.banner)) {
+      throw new Error('Delivery fee saved, but the server doesn\'t support banner messages yet — the backend needs to be deployed again.');
+    }
     document.getElementById('set-banner').value = saved.banner.join('\n');
     showToast('Settings saved');
   } catch (err) {
