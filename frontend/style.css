@@ -2149,3 +2149,11 @@ footer {
   .sale-tag { top: 0.5rem; left: 0.5rem; font-size: 0.55rem; letter-spacing: 1px; }
   .product-badge-below { top: 2.2rem; }
 }
+
+/* Short button under the Trending Footwear stories */
+.stories-more {
+  text-align: center;
+  margin-top: 3.5rem;
+}
+
+.stories-more .btn { padding: 0.75rem 2.2rem; }
