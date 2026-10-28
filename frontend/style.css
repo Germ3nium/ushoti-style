@@ -1658,58 +1658,6 @@ footer {
   transform: translateX(2px);
 }
 
-/* Trust Perks Bar */
-.trust-perks {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 1.5rem;
-  padding: 1.8rem 3rem;
-  background: var(--bg-card);
-  border-bottom: 1px solid var(--border);
-}
-
-.trust-perk-item {
-  display: flex;
-  align-items: center;
-  gap: 1rem;
-}
-
-.trust-perk-icon {
-  width: 42px;
-  height: 42px;
-  border-radius: 50%;
-  background: var(--bg);
-  border: 1px solid var(--border);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: var(--gold);
-  flex-shrink: 0;
-}
-
-.trust-perk-icon svg {
-  width: 20px;
-  height: 20px;
-  stroke: currentColor;
-  stroke-width: 1.7;
-  fill: none;
-}
-
-.trust-perk-text h5 {
-  font-size: 0.78rem;
-  font-weight: 600;
-  color: var(--text);
-  margin-bottom: 0.2rem;
-  text-transform: uppercase;
-  letter-spacing: 0.8px;
-}
-
-.trust-perk-text p {
-  font-size: 0.74rem;
-  color: var(--text-muted);
-  font-weight: 300;
-}
-
 /* Filter Tabs */
 .filter-tabs {
   display: flex;
@@ -2184,7 +2132,6 @@ footer {
 /* ── RESPONSIVE ──────────────────────────────────────────────── */
 @media (max-width: 960px) {
   .spotlight-grid { grid-template-columns: 1fr; }
-  .trust-perks { grid-template-columns: repeat(2, 1fr); padding: 1.5rem; }
   .testimonials-grid { grid-template-columns: 1fr; }
   .promo-strip-banner { flex-direction: column; align-items: flex-start; }
 }
@@ -2224,7 +2171,6 @@ footer {
   .logo { font-size: 1.2rem; letter-spacing: 2px; white-space: nowrap; }
   .nav-links a:not(.cart-link) { display: none; }
   .nav-links a span { display: none; }
-  .trust-perks { grid-template-columns: 1fr; }
   .newsletter-form { flex-direction: column; }
   .newsletter-form .btn { width: 100%; }
 }
