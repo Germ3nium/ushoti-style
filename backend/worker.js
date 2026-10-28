@@ -1,7 +1,7 @@
 // ── Cloudflare Worker for Ushoti Style ──────────────────────
 // Handles:
 //   GET    /api/products              → active products for the shop
-//   GET    /api/settings              → shop settings shoppers need (delivery fee, banner messages)
+//   GET    /api/settings              → shop settings shoppers need (delivery fee, banner, trending sneakers)
 //   GET    /api/images/:id            → product photo uploaded from the admin page
 //   GET    /api/orders/:ref           → receipt for one order (the ref is an unguessable UUID)
 //   POST   /api/sign-payment          → creates a PENDING order, returns signed PayFast fields
@@ -15,7 +15,7 @@
 //   PUT    /api/admin/products/:id    → update product
 //   DELETE /api/admin/products/:id    → delete product
 //   POST   /api/admin/images          → upload a product photo (raw image body), returns its url
-//   PUT    /api/admin/settings        → update shop settings (delivery fee, banner messages)
+//   PUT    /api/admin/settings        → update shop settings (delivery fee, banner, trending sneakers)
 
 const PAYFAST_SANDBOX = true; // set to false when going live
 
@@ -28,6 +28,38 @@ const MAX_SHIPPING_FEE = 10000;
 const DEFAULT_BANNER = ['Premium Sneakers', 'Hair Extensions & Wigs', 'Secure PayFast Checkout', 'Nationwide Delivery', 'New Arrivals Weekly'];
 const MAX_BANNER_MESSAGES = 12;
 const MAX_BANNER_LENGTH = 80;
+// Home page "Trending Footwear" stories: a photo beside a sneaker's style and history.
+// Images may be site files (images/...) or uploaded photo links.
+const MAX_STORIES = 2;
+const MAX_STORY_FACTS = 4;
+const DEFAULT_STORIES = [
+  {
+    image: 'images/stories/air-force-1.jpg',
+    product_id: 'snk24f2e92a',
+    eyebrow: 'Since 1982',
+    title: 'Nike Air Force 1',
+    description: 'Designed by Bruce Kilgore and released in 1982, the Air Force 1 was the first basketball shoe with Nike Air cushioning. It soon moved from the court to the street and never left — the all-white low is still one of the most worn sneakers in the world.',
+    facts: [
+      { label: 'First released', value: '1982' },
+      { label: 'Designer', value: 'Bruce Kilgore' },
+      { label: 'Style', value: 'Low-top court classic' },
+      { label: 'Upper', value: 'Leather' },
+    ],
+  },
+  {
+    image: 'images/stories/adidas-campus.jpg',
+    product_id: 'snke740a0a6',
+    eyebrow: 'Since 1983',
+    title: 'Adidas Campus 00s',
+    description: 'The Campus began on basketball courts as the Tournament before taking its name in 1983. Hip-hop and skate culture turned the suede low into a street staple, and the Campus 00s brings it back with a chunkier sole and fat laces.',
+    facts: [
+      { label: 'First released', value: '1983' },
+      { label: 'This version', value: 'Campus 00s, 2023' },
+      { label: 'Style', value: 'Suede low-top' },
+      { label: 'Upper', value: 'Suede' },
+    ],
+  },
+];
 const CATEGORIES   = ['sneakers', 'hair'];
 const FULFILMENT   = ['NEW', 'PROCESSING', 'SHIPPED', 'DELIVERED', 'CANCELLED'];
 const IMAGE_TYPES  = ['image/jpeg', 'image/png', 'image/webp'];
@@ -132,9 +164,11 @@ async function getSettings(env) {
 
   const fee = Number(stored.shipping_fee);
   const banner = safeJson(stored.banner, null);
+  const stories = safeJson(stored.stories, null);
   return {
     shipping_fee: stored.shipping_fee !== undefined && Number.isFinite(fee) ? fee : DEFAULT_SHIPPING_FEE,
     banner: Array.isArray(banner) ? banner : DEFAULT_BANNER,
+    stories: Array.isArray(stories) ? stories : DEFAULT_STORIES,
   };
 }
 
@@ -174,6 +208,12 @@ async function handleSaveSettings(request, env, cors) {
     updates.banner = JSON.stringify(banner);
   }
 
+  if (body.stories !== undefined) {
+    const stories = validateStories(body.stories);
+    if (stories.error) return json({ error: stories.error }, cors, 400);
+    updates.stories = JSON.stringify(stories);
+  }
+
   const now = new Date().toISOString();
   const save = env.DB.prepare(`
     INSERT INTO settings (key, value, updated_at) VALUES (?, ?, ?)
@@ -183,6 +223,32 @@ async function handleSaveSettings(request, env, cors) {
   if (writes.length) await env.DB.batch(writes);
 
   return json(await getSettings(env), cors);
+}
+
+function validateStories(list) {
+  if (!Array.isArray(list) || list.length > MAX_STORIES) return { error: `Add at most ${MAX_STORIES} trending sneakers` };
+  const text = (value, max) => String(value || '').trim().slice(0, max);
+  const stories = [];
+  for (const [i, raw] of list.entries()) {
+    const n = i + 1;
+    const image = text(raw.image, 500);
+    if (!image) return { error: `Trending sneaker ${n}: add a photo` };
+    if (!isImageUrl(image) && !/^images\/[\w./-]+$/.test(image)) return { error: `Trending sneaker ${n}: that photo link isn't allowed` };
+    const title = text(raw.title, 80);
+    if (!title) return { error: `Trending sneaker ${n}: add a name` };
+    const product_id = text(raw.product_id, 40);
+    if (product_id && !/^[a-z0-9]+$/.test(product_id)) return { error: `Trending sneaker ${n}: pick a product from the list` };
+    const facts = (Array.isArray(raw.facts) ? raw.facts : [])
+      .map(f => ({ label: text(f.label, 30), value: text(f.value, 60) }))
+      .filter(f => f.label && f.value)
+      .slice(0, MAX_STORY_FACTS);
+    stories.push({
+      image, product_id, title, facts,
+      eyebrow:     text(raw.eyebrow, 40),
+      description: text(raw.description, 600),
+    });
+  }
+  return stories;
 }
 
 // ── Sign Payment ─────────────────────────────────────────────

@@ -152,101 +152,64 @@
     </div>
   </div>
 
-  <!-- ── FEATURED COLLECTIONS SECTION (DEDICATED CATEGORY TABS) ─────── -->
-  <div class="section" id="featured-section">
+  <!-- ── TRENDING FOOTWEAR: two sneakers with their style and history ──
+       Photos, text and linked products are set on the admin Settings tab;
+       the stories written here show if those can't be loaded. -->
+  <div class="section stories" id="featured-section">
     <div class="section-header-flex reveal">
       <div>
-        <p class="section-label" id="featured-label">The Sneaker Vault</p>
-        <h2 class="section-title" id="featured-title">Trending Footwear</h2>
+        <p class="section-label">The Sneaker Vault</p>
+        <h2 class="section-title">Trending Footwear</h2>
         <div class="section-divider"></div>
       </div>
-      <a href="sneakers.html" id="section-view-all" class="section-link">
+      <a href="sneakers.html" class="section-link">
         View All Sneakers
         <svg viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"/></svg>
       </a>
     </div>
 
-    <!-- Category Tabs: Sneakers & Hair (No combined All Featured tab) -->
-    <div class="filter-tabs reveal">
-      <button class="filter-btn active" data-filter="sneakers" onclick="filterFeatured('sneakers', this)">Sneakers</button>
-      <button class="filter-btn" data-filter="hair" onclick="filterFeatured('hair', this)">Hair &amp; Wigs</button>
-    </div>
-
-    <!-- Dynamic Product Grid -->
-    <div class="product-grid" id="featured-grid" aria-live="polite"></div>
-  </div>
-
-  <!-- ── DUAL SPOTLIGHT: DROP OF THE WEEK & SIGNATURE HAIR ────────── -->
-  <div class="section" style="padding-top:1rem; padding-bottom:2rem;">
-    <div class="spotlight-grid">
-
-      <!-- Spotlight 1: Jordan 1 -->
-      <div class="spotlight-card reveal reveal-left" data-product-card="snk2">
-        <div class="spotlight-img">
-          <img src="https://images.unsplash.com/photo-1600185365483-26d7a4cc7519?w=700&h=600&fit=crop" alt="Jordan 1 Retro High"/>
+    <div id="stories">
+      <article class="story reveal">
+        <div class="story-img">
+          <img src="images/stories/air-force-1.jpg" alt="Nike Air Force 1 Low in white" loading="lazy" width="1100" height="620"/>
         </div>
-        <div class="spotlight-body">
-          <div>
-            <span class="spotlight-badge">Weekly Hype Drop</span>
-            <h3 class="spotlight-title">Jordan 1 Retro High</h3>
-            <p class="spotlight-desc">Unrivalled court icon remastered in premium leather for the South African streetwear scene.</p>
-            <ul class="spotlight-features">
-              <li><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg> 4 Authentic Colourways (Red, Black, White, Navy)</li>
-              <li><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg> SA Sizes 4 &ndash; 13 in Stock</li>
-              <li><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg> Encapsulated Nike Air-Sole Cushioning</li>
-            </ul>
-          </div>
-          <div>
-            <div class="spotlight-price-row">
-              <div class="spotlight-price" data-product-price="snk2">R2,499</div>
-              <span class="spotlight-status"><span class="stock-dot"></span> Selling Fast</span>
-            </div>
-            <button class="btn" style="width:100%" onclick="openProductModal('snk2')">Customise &amp; Order</button>
+        <div class="story-body">
+          <span class="story-eyebrow">Since 1982</span>
+          <h3 class="story-title">Nike Air Force 1</h3>
+          <p class="story-desc">Designed by Bruce Kilgore and released in 1982, the Air Force 1 was the first basketball shoe with Nike Air cushioning. It soon moved from the court to the street and never left &mdash; the all-white low is still one of the most worn sneakers in the world.</p>
+          <dl class="story-facts">
+            <div><dt>First released</dt><dd>1982</dd></div>
+            <div><dt>Designer</dt><dd>Bruce Kilgore</dd></div>
+            <div><dt>Style</dt><dd>Low-top court classic</dd></div>
+            <div><dt>Upper</dt><dd>Leather</dd></div>
+          </dl>
+          <div class="story-buy">
+            <span class="story-price" data-product-price="snk24f2e92a">R1,200</span>
+            <button class="btn" onclick="openProductModal('snk24f2e92a')">Shop Air Force 1</button>
           </div>
         </div>
-      </div>
+      </article>
 
-      <!-- Spotlight 2: Body Wave Wig -->
-      <div class="spotlight-card reveal reveal-right" data-product-card="hr1">
-        <div class="spotlight-img">
-          <img src="https://images.unsplash.com/photo-1522337360788-8b13dee7a37e?w=700&h=600&fit=crop" alt="Body Wave Wig 18 inch"/>
+      <article class="story story-reverse reveal">
+        <div class="story-img">
+          <img src="images/stories/adidas-campus.jpg" alt="Adidas Campus 00s in grey and black suede" loading="lazy" width="1100" height="619"/>
         </div>
-        <div class="spotlight-body">
-          <div>
-            <span class="spotlight-badge">Mzansi Favourite</span>
-            <h3 class="spotlight-title">Body Wave Lace Wig 18"</h3>
-            <p class="spotlight-desc">Lustrous 100% human virgin hair with pre-plucked lace for an effortless, undetectable hairline.</p>
-            <ul class="spotlight-features">
-              <li><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg> Available from 10" up to 24" lengths</li>
-              <li><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg> Pre-bleached knots, zero shedding</li>
-              <li><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg> Heat-stylable, bleachable &amp; dyeable</li>
-            </ul>
-          </div>
-          <div>
-            <div class="spotlight-price-row">
-              <div class="spotlight-price" data-product-price="hr1">R1,850</div>
-              <span class="spotlight-status" style="color:#16a34a"><span class="stock-dot"></span> In High Demand</span>
-            </div>
-            <button class="btn" style="width:100%" onclick="openProductModal('hr1')">Choose Length &amp; Order</button>
+        <div class="story-body">
+          <span class="story-eyebrow">Since 1983</span>
+          <h3 class="story-title">Adidas Campus 00s</h3>
+          <p class="story-desc">The Campus began on basketball courts as the Tournament before taking its name in 1983. Hip-hop and skate culture turned the suede low into a street staple, and the Campus 00s brings it back with a chunkier sole and fat laces.</p>
+          <dl class="story-facts">
+            <div><dt>First released</dt><dd>1983</dd></div>
+            <div><dt>This version</dt><dd>Campus 00s, 2023</dd></div>
+            <div><dt>Style</dt><dd>Suede low-top</dd></div>
+            <div><dt>Upper</dt><dd>Suede</dd></div>
+          </dl>
+          <div class="story-buy">
+            <span class="story-price" data-product-price="snke740a0a6">R1,100</span>
+            <button class="btn" onclick="openProductModal('snke740a0a6')">Shop Campus</button>
           </div>
         </div>
-      </div>
-
-    </div>
-  </div>
-
-  <!-- ── LUXURY PROMO BANNER STRIP ─────────────────────────────────── -->
-  <div style="padding: 0 3rem;">
-    <div class="promo-strip-banner reveal">
-      <div class="promo-strip-text">
-        <p class="promo-strip-label">Exclusive Service</p>
-        <h3>Elevate Your Everyday <span>From Head To Toe</span></h3>
-        <p></p>
-      </div>
-      <div class="promo-strip-actions">
-        <a href="sneakers.html" class="btn">Shop Sneakers</a>
-        <a href="hair.html" class="btn btn-outline" style="border-color:var(--gold-pale);color:var(--gold-pale)">Shop Hair</a>
-      </div>
+      </article>
     </div>
   </div>
 

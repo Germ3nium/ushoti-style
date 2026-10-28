@@ -109,61 +109,50 @@ const counterObserver = new IntersectionObserver((entries) => {
 }, { threshold: 0.5 });
 counters.forEach(c => counterObserver.observe(c));
 
-// ── Featured Products (Sneakers vs Hair) ─────────────────
-const featuredGrid = document.getElementById('featured-grid');
-let featuredCounts = { sneakers: 0, hair: 0 };
+// ── Trending Footwear stories (set on the admin Settings tab) ──
+function storyHtml(story, i) {
+  const facts = (story.facts || []).map(f =>
+    `<div><dt>${escapeHtml(f.label)}</dt><dd>${escapeHtml(f.value)}</dd></div>`).join('');
+  return `
+    <article class="story${i % 2 ? ' story-reverse' : ''}">
+      <div class="story-img">
+        <img src="${escapeHtml(story.image)}" alt="${escapeHtml(story.title)}" loading="lazy" onerror="${IMG_ONERROR}"/>
+      </div>
+      <div class="story-body">
+        ${story.eyebrow ? `<span class="story-eyebrow">${escapeHtml(story.eyebrow)}</span>` : ''}
+        <h3 class="story-title">${escapeHtml(story.title)}</h3>
+        ${story.description ? `<p class="story-desc">${escapeHtml(story.description)}</p>` : ''}
+        ${facts ? `<dl class="story-facts">${facts}</dl>` : ''}
+        <div class="story-buy" data-story-product="${escapeHtml(story.product_id || '')}" hidden>
+          <span class="story-price"></span>
+          <button class="btn" type="button">Shop Now</button>
+        </div>
+      </div>
+    </article>`;
+}
 
-function renderFeatured() {
-  featuredGrid.innerHTML = '<p class="products-status">Loading products…</p>';
-  bindProductCards(featuredGrid);
+function renderStories() {
+  const box = document.getElementById('stories');
+  if (!box) return;
 
-  loadProducts().then(list => {
-    featuredCounts = {
-      sneakers: list.filter(p => p.category === 'sneakers').length,
-      hair:     list.filter(p => p.category === 'hair').length
-    };
-    document.querySelectorAll('.filter-btn[data-filter]').forEach(btn => {
-      const label = btn.dataset.filter === 'sneakers' ? 'Sneakers' : 'Hair &amp; Wigs';
-      btn.innerHTML = `${label} (${featuredCounts[btn.dataset.filter]})`;
+  loadSettings().then(settings => {
+    const stories = settings.stories || [];
+    box.closest('.stories').hidden = !stories.length;
+    box.innerHTML = stories.map(storyHtml).join('');
+    return loadProducts();
+  }).then(() => {
+    // Price and button only show for products still in the shop
+    box.querySelectorAll('[data-story-product]').forEach(buy => {
+      const p = productsById[buy.dataset.storyProduct];
+      if (!p) return;
+      buy.querySelector('.story-price').innerHTML = priceHtml(p);
+      buy.querySelector('button').addEventListener('click', () => openProductModal(p.id));
+      buy.hidden = false;
     });
-    featuredGrid.innerHTML = list.map(p => productCardHtml(p, { featured: true })).join('');
-    filterFeatured('sneakers', document.querySelector('.filter-btn[data-filter="sneakers"]'));
-  }).catch(() => {
-    featuredGrid.innerHTML = '<p class="products-status">We couldn\'t load products right now. Please refresh the page.</p>';
-  });
+  }).catch(() => { /* keep the stories written into the page */ });
 }
 
-function filterFeatured(category, btn) {
-  document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
-  btn.classList.add('active');
-
-  const labelEl = document.getElementById('featured-label');
-  const titleEl = document.getElementById('featured-title');
-  const viewAllLink = document.getElementById('section-view-all');
-  const arrow = '<svg viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"/></svg>';
-
-  if (category === 'sneakers') {
-    if (labelEl) labelEl.textContent = 'The Sneaker Vault';
-    if (titleEl) titleEl.textContent = 'Trending Footwear';
-    if (viewAllLink) {
-      viewAllLink.href = 'sneakers.html';
-      viewAllLink.innerHTML = `View All Sneakers (${featuredCounts.sneakers}) ${arrow}`;
-    }
-  } else if (category === 'hair') {
-    if (labelEl) labelEl.textContent = 'Crown & Glory Boutique';
-    if (titleEl) titleEl.textContent = 'Luxury Extensions & Wigs';
-    if (viewAllLink) {
-      viewAllLink.href = 'hair.html';
-      viewAllLink.innerHTML = `View All Hair (${featuredCounts.hair}) ${arrow}`;
-    }
-  }
-
-  featuredGrid.querySelectorAll('.product-card').forEach(card => {
-    card.style.display = card.dataset.category === category ? 'block' : 'none';
-  });
-}
-
-renderFeatured();
+renderStories();
 
 // ── Wishlist Toggle ──────────────────────────────────────
 function toggleWishlist(e, name) {
