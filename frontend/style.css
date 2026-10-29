@@ -2016,13 +2016,20 @@ footer {
   .product-info .price { font-size: 0.88rem; }
   .product-badge { top: 0.5rem; left: 0.5rem; }
   .photo-count { right: 0.4rem; bottom: 0.4rem; }
-  /* Logo + three links don't fit a phone; the logo goes home and the ☰ menu lists collections */
+  /* Phones keep Sneakers and Hair visible so both collections are obvious; the logo goes home */
   nav { padding: 0.9rem 16px; }
   .logo { font-size: 1.2rem; letter-spacing: 2px; white-space: nowrap; }
-  .nav-links a:not(.cart-link) { display: none; }
+  .nav-links { gap: 0.9rem; }
+  .nav-links a:not(.cart-link) { font-size: 0.68rem; letter-spacing: 1px; }
   .nav-links a span { display: none; }
   .newsletter-form { flex-direction: column; }
   .newsletter-form .btn { width: 100%; }
+}
+
+@media (max-width: 380px) {
+  .logo { font-size: 1.02rem; letter-spacing: 1.5px; }
+  .nav-left { gap: 0.6rem; }
+  .nav-links { gap: 0.75rem; }
 }
 
 /* Shown while product grids load from the backend */
