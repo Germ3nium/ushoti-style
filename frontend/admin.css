@@ -440,9 +440,6 @@ td > .admin-pill:first-child,
 .admin-story-photo img { width: 160px; aspect-ratio: 16 / 9; object-fit: cover; border: 1px solid var(--border); background: #2a2a2c; }
 .admin-story textarea { width: 100%; padding: 0.75rem 1rem; background: var(--bg); border: 1px solid var(--border); color: var(--text); font-family: 'Inter', sans-serif; font-size: 0.9rem; resize: vertical; }
 .admin-story select { width: 100%; }
-.admin-story-facts-label { display: block; font-size: 0.68rem; letter-spacing: 1.5px; text-transform: uppercase; color: var(--text-muted); margin-bottom: 0.5rem; }
-.admin-story-fact { display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 3fr); gap: 0.5rem; margin-bottom: 0.5rem; }
-.admin-story-fact input { width: 100%; padding: 0.55rem 0.75rem; background: var(--bg); border: 1px solid var(--border); color: var(--text); font-size: 0.85rem; }
 @media (max-width: 520px) {
   .admin-story-photo { flex-direction: column; align-items: flex-start; }
 }

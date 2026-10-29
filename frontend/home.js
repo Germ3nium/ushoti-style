@@ -146,26 +146,15 @@ const counterObserver = new IntersectionObserver((entries) => {
 }, { threshold: 0.5 });
 counters.forEach(c => counterObserver.observe(c));
 
-// ── Trending Footwear stories (set on the admin Settings tab) ──
-function storyHtml(story, i) {
-  const facts = (story.facts || []).map(f =>
-    `<div><dt>${escapeHtml(f.label)}</dt><dd>${escapeHtml(f.value)}</dd></div>`).join('');
+// ── Trending Footwear photos (set on the admin Settings tab) ──
+function storyHtml(story) {
   return `
-    <article class="story${i % 2 ? ' story-reverse' : ''}">
+    <a href="sneakers.html" class="story">
       <div class="story-img">
         <img src="${escapeHtml(story.image)}" alt="${escapeHtml(story.title)}" loading="lazy" onerror="${IMG_ONERROR}"/>
       </div>
-      <div class="story-body">
-        ${story.eyebrow ? `<span class="story-eyebrow">${escapeHtml(story.eyebrow)}</span>` : ''}
-        <h3 class="story-title">${escapeHtml(story.title)}</h3>
-        ${story.description ? `<p class="story-desc">${escapeHtml(story.description)}</p>` : ''}
-        ${facts ? `<dl class="story-facts">${facts}</dl>` : ''}
-        <div class="story-buy" data-story-product="${escapeHtml(story.product_id || '')}" hidden>
-          <span class="story-price"></span>
-          <button class="btn" type="button">Shop Now</button>
-        </div>
-      </div>
-    </article>`;
+      <h3 class="story-title">${escapeHtml(story.title)}</h3>
+    </a>`;
 }
 
 function renderStories() {
@@ -176,17 +165,7 @@ function renderStories() {
     const stories = settings.stories || [];
     box.closest('.stories').hidden = !stories.length;
     box.innerHTML = stories.map(storyHtml).join('');
-    return loadProducts();
-  }).then(() => {
-    // Price and button only show for products still in the shop
-    box.querySelectorAll('[data-story-product]').forEach(buy => {
-      const p = productsById[buy.dataset.storyProduct];
-      if (!p) return;
-      buy.querySelector('.story-price').innerHTML = priceHtml(p);
-      buy.querySelector('button').addEventListener('click', () => openProductModal(p.id));
-      buy.hidden = false;
-    });
-  }).catch(() => { /* keep the stories written into the page */ });
+  }).catch(() => { /* keep the photos written into the page */ });
 }
 
 renderStories();

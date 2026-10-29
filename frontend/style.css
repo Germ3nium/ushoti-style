@@ -1777,21 +1777,22 @@ footer {
   50% { opacity: 0.4; transform: scale(0.8); }
 }
 
-/* Sneaker Stories — photo beside the style and history of a classic */
+/* Trending Footwear — two sneaker photos side by side */
 .stories { padding-bottom: 2rem; }
 
-.story {
+.stories-pair {
   display: grid;
-  grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr);
-  gap: 3rem;
-  align-items: center;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 2rem;
   max-width: 1040px;
   margin: 3rem auto 0;
 }
 
-.story + .story { margin-top: 4.5rem; }
-
-.story-reverse .story-img { order: 2; }
+.story {
+  display: block;
+  color: inherit;
+  text-decoration: none;
+}
 
 .story-img {
   overflow: hidden;
@@ -1803,70 +1804,20 @@ footer {
   display: block;
   width: 100%;
   height: auto;
-  aspect-ratio: 16 / 9;
+  aspect-ratio: 4 / 3;
   object-fit: cover;
   transition: transform 0.6s ease;
 }
 
 .story:hover .story-img img { transform: scale(1.03); }
 
-.story-eyebrow {
-  font-size: 0.68rem;
-  font-weight: 600;
-  letter-spacing: 3px;
-  text-transform: uppercase;
-  color: var(--gold);
-}
-
 .story-title {
   font-family: 'Playfair Display', serif;
-  font-size: 1.9rem;
+  font-size: 1.3rem;
   font-weight: 600;
   color: var(--text);
-  margin: 0.4rem 0 0.9rem;
-}
-
-.story-desc {
-  font-size: 0.9rem;
-  line-height: 1.75;
-  color: var(--text-muted);
-}
-
-.story-facts {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 0.9rem 1.5rem;
-  margin: 1.4rem 0 1.6rem;
-  padding: 1.1rem 0;
-  border-top: 1px solid var(--border);
-  border-bottom: 1px solid var(--border);
-}
-
-.story-facts dt {
-  font-size: 0.62rem;
-  letter-spacing: 1.5px;
-  text-transform: uppercase;
-  color: var(--text-muted);
-  margin-bottom: 0.2rem;
-}
-
-.story-facts dd {
-  font-size: 0.88rem;
-  font-weight: 500;
-  color: var(--text);
-}
-
-.story-buy {
-  display: flex;
-  align-items: center;
-  gap: 1.5rem;
-  flex-wrap: wrap;
-}
-
-.story-price {
-  font-size: 1.15rem;
-  font-weight: 600;
-  color: var(--gold);
+  margin-top: 0.9rem;
+  text-align: center;
 }
 
 /* Verified Reviews Grid */
@@ -2004,10 +1955,8 @@ footer {
   .form-row { grid-template-columns: 1fr; }
   .cart-container { padding: 0 1.5rem; }
   .checkout-container { padding: 0 1.5rem; }
-  .story { grid-template-columns: 1fr; gap: 1.4rem; margin-top: 2rem; }
-  .story + .story { margin-top: 3rem; }
-  .story-reverse .story-img { order: 0; }
-  .story-title { font-size: 1.5rem; }
+  .stories-pair { gap: 0.9rem; margin-top: 2rem; }
+  .story-title { font-size: 1rem; margin-top: 0.6rem; }
 }
 
 @media (max-width: 480px) {
@@ -2160,7 +2109,7 @@ footer {
   .product-badge-below { top: 2.2rem; }
 }
 
-/* Short button under the Trending Footwear stories */
+/* Shop Now button under the Trending Footwear photos */
 .stories-more {
   text-align: center;
   margin-top: 3.5rem;

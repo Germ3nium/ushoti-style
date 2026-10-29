@@ -103,10 +103,7 @@ async function loadSettings() {
   document.getElementById('set-banner').value = (settings.banner || []).join('\n');
 
   renderSlideEditors(settings.slides || []);
-
-  // Shop product choices: sneakers, including hidden ones
-  const all = await api('products');
-  renderStoryEditors(settings.stories || [], all.filter(p => p.category === 'sneakers'));
+  renderStoryEditors(settings.stories || []);
 }
 
 // ── Slideshow editors ──
@@ -256,13 +253,11 @@ slidesBox.addEventListener('change', async e => {
 });
 
 const STORY_SLOTS = 2;
-const STORY_FACTS = 4;
 
-function renderStoryEditors(stories, sneakers) {
+function renderStoryEditors(stories) {
   const box = document.getElementById('set-stories');
   box.innerHTML = Array.from({ length: STORY_SLOTS }, (_, i) => {
-    const s = stories[i] || { facts: [] };
-    const known = sneakers.some(p => p.id === s.product_id);
+    const s = stories[i] || {};
     return `
       <fieldset class="admin-story" data-story="${i}">
         <legend>Sneaker ${i + 1}</legend>
@@ -279,33 +274,6 @@ function renderStoryEditors(stories, sneakers) {
           <label>Name</label>
           <input type="text" data-field="title" maxlength="80" value="${escapeHtml(s.title || '')}" placeholder="e.g. Nike Air Force 1"/>
         </div>
-        <div class="form-row">
-          <div class="form-group">
-            <label>Small heading</label>
-            <input type="text" data-field="eyebrow" maxlength="40" value="${escapeHtml(s.eyebrow || '')}" placeholder="e.g. Since 1982"/>
-          </div>
-          <div class="form-group">
-            <label>Shop button opens</label>
-            <select data-field="product_id">
-              <option value="">No button</option>
-              ${sneakers.map(p => `<option value="${escapeHtml(p.id)}" ${p.id === s.product_id ? 'selected' : ''}>${escapeHtml(p.name)}${p.active ? '' : ' (hidden)'}</option>`).join('')}
-              ${s.product_id && !known ? `<option value="" selected>(product was deleted)</option>` : ''}
-            </select>
-          </div>
-        </div>
-        <div class="form-group">
-          <label>Story</label>
-          <textarea data-field="description" rows="4" maxlength="600">${escapeHtml(s.description || '')}</textarea>
-        </div>
-        <label class="admin-story-facts-label">Quick facts (label and value)</label>
-        ${Array.from({ length: STORY_FACTS }, (_, n) => {
-          const f = (s.facts || [])[n] || {};
-          return `
-          <div class="admin-story-fact" data-fact>
-            <input type="text" maxlength="30" value="${escapeHtml(f.label || '')}" placeholder="e.g. First released" aria-label="Fact ${n + 1} label"/>
-            <input type="text" maxlength="60" value="${escapeHtml(f.value || '')}" placeholder="e.g. 1982" aria-label="Fact ${n + 1} value"/>
-          </div>`;
-        }).join('')}
       </fieldset>`;
   }).join('');
 }
@@ -315,14 +283,7 @@ function readStoryEditors() {
     const field = name => box.querySelector(`[data-field="${name}"]`).value.trim();
     return {
       image: field('image'),
-      title: field('title'),
-      eyebrow: field('eyebrow'),
-      product_id: field('product_id'),
-      description: field('description'),
-      facts: [...box.querySelectorAll('[data-fact]')].map(row => {
-        const [label, value] = row.querySelectorAll('input');
-        return { label: label.value.trim(), value: value.value.trim() };
-      }).filter(f => f.label && f.value)
+      title: field('title')
     };
   }).filter(s => s.image || s.title); // an empty slot is left off the home page
 }
