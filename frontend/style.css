@@ -589,14 +589,11 @@ body > *:not(#particles-canvas):not(.modal-overlay):not(#toast):not(.sidebar-ove
 .product-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
-  gap: 1px;
+  gap: 1.5rem;
 }
 
-/* Each card draws its own 1px outline, filling the gaps between cards, so an
-   unfilled last row leaves blank space instead of a coloured block */
 .product-card {
   background: var(--bg-card);
-  box-shadow: 0 0 0 1px var(--border);
   overflow: hidden;
   cursor: pointer;
   position: relative;
@@ -605,7 +602,7 @@ body > *:not(#particles-canvas):not(.modal-overlay):not(#toast):not(.sidebar-ove
 
 .product-card:hover {
   background: var(--bg);
-  box-shadow: 0 0 0 1px var(--border), 0 10px 30px rgba(184,146,42,0.12);
+  box-shadow: 0 10px 30px rgba(184,146,42,0.12);
   transform: translateY(-2px);
 }
 
@@ -685,7 +682,6 @@ body > *:not(#particles-canvas):not(.modal-overlay):not(#toast):not(.sidebar-ove
 
 .product-info {
   padding: 1rem 1.2rem 1.1rem;
-  border-top: 1px solid var(--border);
 }
 
 .product-info h3 {
@@ -1763,7 +1759,6 @@ footer {
 
 .story-img {
   overflow: hidden;
-  border: 1px solid var(--border);
   background: #2a2a2c;
 }
 
@@ -1929,7 +1924,7 @@ footer {
 @media (max-width: 480px) {
   .hero h1 { font-size: 2rem; letter-spacing: 3px; }
   /* Two products per row on phones */
-  .product-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .product-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.75rem; }
   .product-info { padding: 0.7rem 0.75rem 0.8rem; }
   .product-info h3 { font-size: 0.8rem; }
   .product-info .price { font-size: 0.88rem; }
