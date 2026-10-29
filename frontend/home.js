@@ -126,26 +126,6 @@ const observer  = new IntersectionObserver((entries) => {
 }, { threshold: 0.12 });
 revealEls.forEach(el => observer.observe(el));
 
-// ── Animated Counters ────────────────────────────────────
-const counters = document.querySelectorAll('.stat-number[data-target]');
-const counterObserver = new IntersectionObserver((entries) => {
-  entries.forEach(e => {
-    if (!e.isIntersecting) return;
-    const el     = e.target;
-    const target = parseInt(el.dataset.target);
-    const suffix = target >= 500 ? '+' : (target === 9 ? '' : '+');
-    let current  = 0;
-    const step   = Math.ceil(target / 60);
-    const timer  = setInterval(() => {
-      current += step;
-      if (current >= target) { current = target; clearInterval(timer); }
-      el.textContent = current + suffix;
-    }, 25);
-    counterObserver.unobserve(el);
-  });
-}, { threshold: 0.5 });
-counters.forEach(c => counterObserver.observe(c));
-
 // ── Trending Footwear photos (set on the admin Settings tab) ──
 function storyHtml(story) {
   return `
