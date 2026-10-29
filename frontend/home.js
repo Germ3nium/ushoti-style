@@ -1,11 +1,10 @@
-// ── Slideshow ────────────────────────────────────────────
+// ── Slideshow (slides are set on the admin Settings tab) ──
 let currentSlide = 0;
 let autoplayTimer;
-let progressTimer;
 const SLIDE_DURATION = 5000;
-const slides = document.querySelectorAll('.slide');
-const dots   = document.querySelectorAll('.dot');
 const progressBar = document.getElementById('slide-progress');
+let slides = document.querySelectorAll('.slide');
+let dots   = document.querySelectorAll('.dot');
 
 function goToSlide(n) {
   slides[currentSlide].classList.remove('active');
@@ -32,11 +31,49 @@ function startProgress() {
 
 function resetAutoplay() {
   clearInterval(autoplayTimer);
+  if (slides.length < 2) return;
   startProgress();
   autoplayTimer = setInterval(() => moveSlide(1), SLIDE_DURATION);
 }
 
+function slideHtml(slide, i) {
+  const buttons = (slide.buttons || []).map((b, n) =>
+    `<a href="${escapeHtml(b.link)}" class="btn${n ? ' btn-outline' : ''}">${escapeHtml(b.label)}</a>`).join('');
+  // Only the first slide's heading is the page's main heading
+  const tag = i === 0 ? 'h1' : 'h2';
+  return `
+    <div class="slide${i === 0 ? ' active' : ''}" data-focus="${escapeHtml(slide.focus || 'right')}">
+      <div class="slide-overlay"></div>
+      <div class="slide-content">
+        ${slide.eyebrow ? `<p class="hero-eyebrow">${escapeHtml(slide.eyebrow)}</p>` : ''}
+        <${tag} class="slide-title">${escapeHtml(slide.title)}${slide.accent ? `<br/><span>${escapeHtml(slide.accent)}</span>` : ''}</${tag}>
+        ${slide.text ? `<p>${escapeHtml(slide.text)}</p>` : ''}
+        ${buttons ? `<div class="hero-actions">${buttons}</div>` : ''}
+      </div>
+    </div>`;
+}
+
+function renderSlides(list) {
+  const slider = document.querySelector('.hero-slider');
+  if (!slider || !list.length) return;
+  slides.forEach(el => el.remove());
+  slider.querySelector('.slider-arrow').insertAdjacentHTML('beforebegin', list.map(slideHtml).join(''));
+  slides = slider.querySelectorAll('.slide');
+  slides.forEach((el, i) => { el.style.backgroundImage = `url(${JSON.stringify(list[i].image)})`; });
+
+  slider.querySelector('.slider-dots').innerHTML = list.map((_, i) =>
+    `<button class="dot${i === 0 ? ' active' : ''}" onclick="goToSlide(${i})" aria-label="Show slide ${i + 1}"></button>`).join('');
+  dots = slider.querySelectorAll('.dot');
+  slider.classList.toggle('single-slide', list.length < 2);
+
+  currentSlide = 0;
+  resetAutoplay();
+}
+
 resetAutoplay();
+loadSettings()
+  .then(settings => renderSlides(settings.slides || []))
+  .catch(() => { /* keep the slides written into the page */ });
 
 // ── Particles ────────────────────────────────────────────
 const canvas = document.getElementById('particles-canvas');

@@ -102,10 +102,158 @@ async function loadSettings() {
   document.getElementById('set-shipping').value = settings.shipping_fee;
   document.getElementById('set-banner').value = (settings.banner || []).join('\n');
 
+  renderSlideEditors(settings.slides || []);
+
   // Shop product choices: sneakers, including hidden ones
   const all = await api('products');
   renderStoryEditors(settings.stories || [], all.filter(p => p.category === 'sneakers'));
 }
+
+// ── Slideshow editors ──
+const MAX_SLIDES = 6;
+const SLIDE_LINKS = [
+  ['', 'No button'],
+  ['sneakers.html', 'Sneakers page'],
+  ['hair.html', 'Hair page'],
+  ['sale.html', 'On Sale page'],
+  ['products.html', 'All products page'],
+  ['#collections', 'Collections (home page)'],
+  ['#featured-section', 'Trending Footwear (home page)'],
+];
+const SLIDE_FOCUS = [['right', 'Right side'], ['center', 'Middle'], ['left', 'Left side']];
+
+function optionsHtml(choices, selected) {
+  return choices.map(([value, label]) =>
+    `<option value="${value}" ${value === selected ? 'selected' : ''}>${label}</option>`).join('');
+}
+
+function renderSlideEditors(slides) {
+  const box = document.getElementById('set-slides');
+  box.innerHTML = slides.map((s, i) => {
+    const buttons = s.buttons || [];
+    return `
+      <fieldset class="admin-story" data-slide="${i}">
+        <legend>Slide ${i + 1}</legend>
+        <div class="admin-slide-tools">
+          ${i > 0 ? '<button type="button" class="btn btn-ghost admin-btn-sm" data-slide-up>&uarr; Move up</button>' : ''}
+          <button type="button" class="btn btn-ghost admin-btn-sm admin-danger" data-slide-remove>Remove</button>
+        </div>
+        <div class="admin-story-photo">
+          <img src="${escapeHtml(s.image || '')}" alt="" ${s.image ? '' : 'hidden'} onerror="${IMG_ONERROR}"/>
+          <input type="hidden" data-field="image" value="${escapeHtml(s.image || '')}"/>
+          <div>
+            <button type="button" class="btn btn-ghost admin-btn-sm" data-slide-upload>Choose picture</button>
+            <input type="file" accept="image/*" hidden data-slide-file/>
+            <p class="admin-muted admin-hint" data-slide-status></p>
+          </div>
+        </div>
+        <div class="form-group">
+          <label>Small heading</label>
+          <input type="text" data-field="eyebrow" maxlength="60" value="${escapeHtml(s.eyebrow || '')}" placeholder="e.g. Black Friday — 30% off"/>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>Big heading</label>
+            <input type="text" data-field="title" maxlength="40" value="${escapeHtml(s.title || '')}" placeholder="e.g. Air Force 1"/>
+          </div>
+          <div class="form-group">
+            <label>Second line (gold)</label>
+            <input type="text" data-field="accent" maxlength="40" value="${escapeHtml(s.accent || '')}" placeholder="e.g. White"/>
+          </div>
+        </div>
+        <div class="form-group">
+          <label>Short text</label>
+          <input type="text" data-field="text" maxlength="200" value="${escapeHtml(s.text || '')}" placeholder="One sentence"/>
+        </div>
+        ${[0, 1].map(n => `
+        <div class="form-row" data-slide-button>
+          <div class="form-group">
+            <label>${n ? 'Second' : 'First'} button text</label>
+            <input type="text" maxlength="30" value="${escapeHtml((buttons[n] || {}).label || '')}" placeholder="${n ? 'e.g. All Sneakers' : 'e.g. Shop Now'}"/>
+          </div>
+          <div class="form-group">
+            <label>${n ? 'Second' : 'First'} button goes to</label>
+            <select>${optionsHtml(SLIDE_LINKS, (buttons[n] || {}).link || '')}</select>
+          </div>
+        </div>`).join('')}
+        <div class="form-group">
+          <label>On phones, keep this part of the picture in view</label>
+          <select data-field="focus">${optionsHtml(SLIDE_FOCUS, s.focus || 'right')}</select>
+        </div>
+      </fieldset>`;
+  }).join('');
+  document.getElementById('add-slide-btn').hidden = slides.length >= MAX_SLIDES;
+}
+
+function readSlideEditors() {
+  return [...document.querySelectorAll('#set-slides [data-slide]')].map(box => {
+    const field = name => box.querySelector(`[data-field="${name}"]`).value.trim();
+    return {
+      image: field('image'),
+      eyebrow: field('eyebrow'),
+      title: field('title'),
+      accent: field('accent'),
+      text: field('text'),
+      focus: field('focus'),
+      buttons: [...box.querySelectorAll('[data-slide-button]')].map(row => ({
+        label: row.querySelector('input').value.trim(),
+        link: row.querySelector('select').value
+      })).filter(b => b.label || b.link)
+    };
+  });
+}
+
+const slidesBox = document.getElementById('set-slides');
+
+slidesBox.addEventListener('click', e => {
+  const box = e.target.closest('[data-slide]');
+  if (!box) return;
+  const i = Number(box.dataset.slide);
+  if (e.target.closest('[data-slide-upload]')) box.querySelector('[data-slide-file]').click();
+  if (e.target.closest('[data-slide-up]')) {
+    const slides = readSlideEditors();
+    [slides[i - 1], slides[i]] = [slides[i], slides[i - 1]];
+    renderSlideEditors(slides);
+  }
+  if (e.target.closest('[data-slide-remove]')) {
+    const slides = readSlideEditors();
+    if (slides.length === 1) return showToast('Keep at least one slide');
+    if (!confirm(`Remove slide ${i + 1}? It goes from the home page when you click Save.`)) return;
+    slides.splice(i, 1);
+    renderSlideEditors(slides);
+  }
+});
+
+document.getElementById('add-slide-btn').addEventListener('click', () => {
+  const slides = readSlideEditors();
+  slides.push({ focus: 'right', buttons: [] });
+  renderSlideEditors(slides);
+  slidesBox.lastElementChild.scrollIntoView({ behavior: 'smooth', block: 'center' });
+});
+
+slidesBox.addEventListener('change', async e => {
+  const input = e.target.closest('[data-slide-file]');
+  if (!input || !input.files.length) return;
+  const box = input.closest('[data-slide]');
+  const status = box.querySelector('[data-slide-status]');
+  const button = box.querySelector('[data-slide-upload]');
+  button.disabled = true;
+  status.textContent = 'Uploading…';
+  try {
+    const blob = await resizePhoto(input.files[0], 1920); // slides fill the screen, so keep them sharp
+    const { url } = await api('images', { method: 'POST', body: blob, headers: { 'Content-Type': 'image/jpeg' } });
+    box.querySelector('[data-field="image"]').value = url;
+    const img = box.querySelector('.admin-story-photo img');
+    img.src = url;
+    img.hidden = false;
+    status.textContent = 'Picture added. Click Save to keep it.';
+  } catch (err) {
+    status.textContent = err.message === 'Unauthorized' ? '' : `Upload failed: ${err.message}`;
+  } finally {
+    button.disabled = false;
+    input.value = '';
+  }
+});
 
 const STORY_SLOTS = 2;
 const STORY_FACTS = 4;
@@ -223,13 +371,15 @@ document.getElementById('settings-form').addEventListener('submit', async e => {
       body: JSON.stringify({
         shipping_fee: Number(document.getElementById('set-shipping').value),
         banner: document.getElementById('set-banner').value.split('\n').map(m => m.trim()).filter(Boolean),
+        slides: readSlideEditors(),
         stories: readStoryEditors()
       })
     });
-    if (!Array.isArray(saved.banner) || !Array.isArray(saved.stories)) {
+    if (!Array.isArray(saved.banner) || !Array.isArray(saved.stories) || !Array.isArray(saved.slides)) {
       throw new Error('Only some settings were saved — the backend needs to be deployed again.');
     }
     document.getElementById('set-banner').value = saved.banner.join('\n');
+    renderSlideEditors(saved.slides);
     showToast('Settings saved');
   } catch (err) {
     if (err.message !== 'Unauthorized') errorEl.textContent = err.message;

@@ -1,7 +1,7 @@
 // ── Cloudflare Worker for Ushoti Style ──────────────────────
 // Handles:
 //   GET    /api/products              → active products for the shop
-//   GET    /api/settings              → shop settings shoppers need (delivery fee, banner, trending sneakers)
+//   GET    /api/settings              → shop settings shoppers need (delivery fee, banner, slideshow, trending sneakers)
 //   GET    /api/images/:id            → product photo uploaded from the admin page
 //   GET    /api/orders/:ref           → receipt for one order (the ref is an unguessable UUID)
 //   POST   /api/sign-payment          → creates a PENDING order, returns signed PayFast fields
@@ -15,7 +15,7 @@
 //   PUT    /api/admin/products/:id    → update product
 //   DELETE /api/admin/products/:id    → delete product
 //   POST   /api/admin/images          → upload a product photo (raw image body), returns its url
-//   PUT    /api/admin/settings        → update shop settings (delivery fee, banner, trending sneakers)
+//   PUT    /api/admin/settings        → update shop settings (delivery fee, banner, slideshow, trending sneakers)
 
 const PAYFAST_SANDBOX = true; // set to false when going live
 
@@ -32,6 +32,36 @@ const MAX_BANNER_LENGTH = 80;
 // Images may be site files (images/...) or uploaded photo links.
 const MAX_STORIES = 2;
 const MAX_STORY_FACTS = 4;
+// Home page slideshow. Buttons may only lead to shop pages or home page sections.
+const MAX_SLIDES = 6;
+const SLIDE_LINKS = ['sneakers.html', 'hair.html', 'sale.html', 'products.html', '#collections', '#featured-section'];
+const SLIDE_FOCUS = ['left', 'center', 'right'];
+const DEFAULT_SLIDES = [
+  {
+    image: 'images/hero/air-force-1-white.jpg', focus: 'right',
+    eyebrow: 'Sneakers & Hair — New Season', title: 'Air Force 1', accent: 'White',
+    text: 'The icon. Reimagined for the streets of South Africa.',
+    buttons: [{ label: 'Shop Featured', link: '#featured-section' }, { label: 'All Sneakers', link: 'sneakers.html' }],
+  },
+  {
+    image: 'images/hero/hair-curly-natural.jpg', focus: 'right',
+    eyebrow: '22” 13x4 Full Frontal SDD', title: 'Jerry', accent: 'Curls',
+    text: 'Super double drawn for fullness from root to tip.',
+    buttons: [{ label: 'Shop Hair', link: 'hair.html' }, { label: 'All Collections', link: '#collections' }],
+  },
+  {
+    image: 'images/hero/nike-p6000-silver.jpg', focus: 'right',
+    eyebrow: 'Fresh Drop', title: 'Nike P-6000', accent: 'Silver',
+    text: 'Y2K runner energy. Chrome finish. Built for everyday wear.',
+    buttons: [{ label: 'Shop Sneakers', link: 'sneakers.html' }, { label: 'Shop Featured', link: '#featured-section' }],
+  },
+  {
+    image: 'images/hero/adidas-campus-00s.jpg', focus: 'right',
+    eyebrow: 'Just Landed', title: 'Adidas', accent: 'Campus 00s',
+    text: 'Chunky suede. Gum sole. Grey or black — why not both?',
+    buttons: [{ label: 'Shop Sneakers', link: 'sneakers.html' }, { label: 'Shop Featured', link: '#featured-section' }],
+  },
+];
 const DEFAULT_STORIES = [
   {
     image: 'images/stories/air-force-1.jpg',
@@ -165,10 +195,12 @@ async function getSettings(env) {
   const fee = Number(stored.shipping_fee);
   const banner = safeJson(stored.banner, null);
   const stories = safeJson(stored.stories, null);
+  const slides = safeJson(stored.slides, null);
   return {
     shipping_fee: stored.shipping_fee !== undefined && Number.isFinite(fee) ? fee : DEFAULT_SHIPPING_FEE,
     banner: Array.isArray(banner) ? banner : DEFAULT_BANNER,
     stories: Array.isArray(stories) ? stories : DEFAULT_STORIES,
+    slides: Array.isArray(slides) && slides.length ? slides : DEFAULT_SLIDES,
   };
 }
 
@@ -208,6 +240,12 @@ async function handleSaveSettings(request, env, cors) {
     updates.banner = JSON.stringify(banner);
   }
 
+  if (body.slides !== undefined) {
+    const slides = validateSlides(body.slides);
+    if (slides.error) return json({ error: slides.error }, cors, 400);
+    updates.slides = JSON.stringify(slides);
+  }
+
   if (body.stories !== undefined) {
     const stories = validateStories(body.stories);
     if (stories.error) return json({ error: stories.error }, cors, 400);
@@ -223,6 +261,38 @@ async function handleSaveSettings(request, env, cors) {
   if (writes.length) await env.DB.batch(writes);
 
   return json(await getSettings(env), cors);
+}
+
+function validateSlides(list) {
+  if (!Array.isArray(list) || !list.length) return { error: 'Keep at least one slide' };
+  if (list.length > MAX_SLIDES) return { error: `Use at most ${MAX_SLIDES} slides` };
+  const text = (value, max) => String(value || '').trim().slice(0, max);
+  const slides = [];
+  for (const [i, raw] of list.entries()) {
+    const n = i + 1;
+    const image = text(raw.image, 500);
+    if (!image) return { error: `Slide ${n}: add a picture` };
+    if (!isImageUrl(image) && !/^images\/[\w./-]+$/.test(image)) return { error: `Slide ${n}: that picture link isn't allowed` };
+    const title = text(raw.title, 40);
+    if (!title) return { error: `Slide ${n}: add a heading` };
+    const buttons = [];
+    for (const b of (Array.isArray(raw.buttons) ? raw.buttons : []).slice(0, 2)) {
+      const label = text(b.label, 30);
+      const link = text(b.link, 60);
+      if (!label && !link) continue;
+      if (!label) return { error: `Slide ${n}: give each button some text` };
+      if (!SLIDE_LINKS.includes(link)) return { error: `Slide ${n}: choose where the "${label}" button goes` };
+      buttons.push({ label, link });
+    }
+    slides.push({
+      image, title, buttons,
+      focus:   SLIDE_FOCUS.includes(raw.focus) ? raw.focus : 'right',
+      eyebrow: text(raw.eyebrow, 60),
+      accent:  text(raw.accent, 40),
+      text:    text(raw.text, 200),
+    });
+  }
+  return slides;
 }
 
 function validateStories(list) {
