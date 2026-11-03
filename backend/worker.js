@@ -17,7 +17,7 @@
 //   POST   /api/admin/images          → upload a product photo (raw image body), returns its url
 //   PUT    /api/admin/settings        → update shop settings (delivery fee, banner, slideshow, trending sneakers)
 
-const PAYFAST_SANDBOX = true; // set to false when going live
+const PAYFAST_SANDBOX = false; // set to false when going live
 
 const PF_HOST = PAYFAST_SANDBOX
   ? 'sandbox.payfast.co.za'
