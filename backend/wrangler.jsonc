@@ -21,6 +21,8 @@
 	//   wrangler secret put PAYFAST_MERCHANT_KEY
 	//   wrangler secret put PAYFAST_PASSPHRASE
 	//   wrangler secret put ADMIN_KEY
+	//   wrangler secret put RESEND_API_KEY     (order emails are skipped without it)
+	//   wrangler secret put ORDER_ALERT_EMAIL  (where new order alerts and buyer replies go)
 
 	"vars": {
 		"RETURN_URL": "https://ushoti-style.sihlek56.workers.dev/success.html",

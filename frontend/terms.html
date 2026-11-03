@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Terms and Conditions | Ushoti Style</title>
+  <link rel="stylesheet" href="style.css"/>
+  <style>
+    .product-card { cursor: pointer; }
+  </style>
+</head>
+<body>
+
+  <div class="sidebar-overlay" id="sidebar-overlay">
+    <div class="sidebar">
+      <div class="sidebar-header">
+        <span>Shop by Category</span>
+        <button class="sidebar-close" onclick="closeSidebar()">&times;</button>
+      </div>
+      <div class="sidebar-section open">
+        <button class="sidebar-section-toggle" onclick="toggleSidebarSection(this)">
+          Sneakers
+          <svg viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"/></svg>
+        </button>
+        <div class="sidebar-links">
+          <a href="sneakers.html">View All Sneakers</a>
+          <a href="kids.html" class="promo">Kids Shoes</a>
+          <a href="sneakers.html" class="promo">New Arrivals</a>
+          <a href="sale.html" class="promo">On Sale</a>
+        </div>
+      </div>
+      <div class="sidebar-section">
+        <button class="sidebar-section-toggle" onclick="toggleSidebarSection(this)">
+          Hair
+          <svg viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"/></svg>
+        </button>
+        <div class="sidebar-links">
+          <a href="hair.html">View All Hair</a>
+          <a href="hair.html" class="promo">New Arrivals</a>
+          <a href="hair.html" class="promo">On Sale</a>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <nav>
+    <div class="nav-left">
+      <button class="sidebar-menu-btn" onclick="openSidebar()" aria-label="Open menu">
+        <svg viewBox="0 0 24 24"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+      </button>
+      <a href="index.html" class="logo">Ushoti Style</a>
+    </div>
+    <div class="nav-links">
+      <a href="index.html" class="nav-hide-mobile">Home</a>
+      <a href="sneakers.html">Sneakers</a>
+      <a href="hair.html">Hair</a>
+      <a href="cart.html" class="cart-link">
+        <svg viewBox="0 0 24 24"><path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 01-8 0"/></svg>
+        <span>Cart</span>
+        <span class="cart-count">0</span>
+      </a>
+    </div>
+  </nav>
+
+  <div class="section terms-page" id="terms">
+    <p class="section-label">Legal</p>
+    <h1 class="section-title">Terms and Conditions of Service</h1>
+    <div class="section-divider"></div>
+    <p class="terms-updated">Last Updated: November 2026</p>
+    <p>Welcome to Ushoti Style (ushotistyle.co.za). By accessing, browsing, or purchasing from this website, you agree to be bound by these Terms and Conditions (&quot;Terms&quot;). Please read them carefully before placing an order.</p>
+
+    <h2>1. General &amp; Business Identification</h2>
+    <p><strong>Business Name:</strong> Ushoti Style</p>
+    <p><strong>Website:</strong> <a href="https://ushotistyle.co.za">https://ushotistyle.co.za</a></p>
+    <p><strong>Email:</strong> <a href="mailto:support@ushotistyle.co.za">support@ushotistyle.co.za</a></p>
+    <p><strong>Location:</strong> Gauteng, South Africa</p>
+
+    <h2>2. Independent Secondary-Market Reseller Notice</h2>
+    <p>Ushoti Style is an independent secondary-market curator and reseller of authentic collectible sneakers, apparel, and accessories.</p>
+    <p>We are not an authorized agent, official franchisee, direct distributor, or affiliated representative of Nike Inc., Jordan Brand, Adidas AG, or any other trademark owner whose products appear on this website.</p>
+    <p>All brand names, silhouettes, trademarks, and associated logos are the intellectual property of their respective owners. Their mention on this platform is purely descriptive and constitutes nominal fair use under commercial practice.</p>
+
+    <h2>3. Product Pricing &amp; Stock Availability</h2>
+    <p>All prices displayed on ushotistyle.co.za are in South African Rand (ZAR).</p>
+    <p>Due to the secondary-market collectible nature of our products, pricing fluctuates based on sizing, release scarcity, and market acquisition cost.</p>
+    <p>Prices and inventory are subject to change without prior notice. An order is not deemed binding until payment has cleared through our gateway and an official confirmation email is issued.</p>
+
+    <h2>4. Payments &amp; Security</h2>
+    <p>Online payments are processed through accredited, PCI-DSS compliant South African payment gateways (including Payfast by Network).</p>
+    <p>We support secure payment methods including Debit/Credit Cards (3D Secure), Instant EFT (Capitec Pay, Ozow), and supported mobile wallets.</p>
+    <p>Ushoti Style does not capture, process, or store payment card details on its servers.</p>
+
+    <h2>5. Governing Law &amp; Jurisdiction</h2>
+    <p>These Terms are governed by and construed in accordance with the laws of the Republic of South Africa, with particular reference to the Electronic Communications and Transactions Act (ECTA) No. 25 of 2002 and the Consumer Protection Act (CPA) No. 68 of 2008.</p>
+  </div>
+
+  <footer>
+    <div class="footer-inner">
+      <div class="footer-brand">
+        <a href="index.html" class="logo">Ushoti Style</a>
+        <p>Premium sneakers and hair, delivered with care across South Africa. Style is not a luxury — it is a standard.</p>
+      </div>
+      <div class="footer-col">
+        <h5>Shop</h5>
+        <a href="sneakers.html">Sneakers</a>
+        <a href="kids.html">Kids Sneakers</a>
+        <a href="hair.html">Hair</a>
+        <a href="sale.html">On Sale</a>
+        <a href="cart.html">My Cart</a>
+      </div>
+      <div class="footer-col">
+        <h5>Information</h5>
+        <a href="#">Shipping Policy</a>
+        <a href="#">Returns &amp; Exchanges</a>
+        <a href="#">Privacy Policy</a>
+        <a href="terms.html">Terms &amp; Conditions</a>
+        <a href="#">Contact Us</a>
+      </div>
+    </div>
+    <div class="footer-bottom">
+      <p>&copy; 2025 <span>Ushoti Style</span>. All rights reserved.</p>
+      <p>Proudly South African</p>
+    </div>
+  </footer>
+
+  <script src="app.js"></script>
+</body>
+</html>

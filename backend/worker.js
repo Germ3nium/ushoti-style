@@ -5,7 +5,7 @@
 //   GET    /api/images/:id            → product photo uploaded from the admin page
 //   GET    /api/orders/:ref           → receipt for one order (the ref is an unguessable UUID)
 //   POST   /api/sign-payment          → creates a PENDING order, returns signed PayFast fields
-//   POST   /api/notify                → PayFast payment notification (marks order PAID)
+//   POST   /api/notify                → PayFast payment notification (marks order PAID, emails the buyer)
 //   Admin (Authorization: Bearer ADMIN_KEY):
 //   GET    /api/admin/summary         → sales totals and best sellers
 //   GET    /api/admin/orders          → orders (?status=PAID|PENDING|FAILED|ALL)
@@ -22,6 +22,8 @@ const PAYFAST_SANDBOX = false; // set to false when going live
 const PF_HOST = PAYFAST_SANDBOX
   ? 'sandbox.payfast.co.za'
   : 'www.payfast.co.za';
+
+const EMAIL_FROM = 'Ushoti Style <orders@ushotistyle.co.za>';
 
 const DEFAULT_SHIPPING_FEE = 80; // used until the admin sets one
 const MAX_SHIPPING_FEE = 10000;
@@ -98,7 +100,7 @@ const MAX_IMAGE_BYTES = 1500000; // D1 rows top out at 2 MB
 const MAX_PHOTOS   = 10;
 
 export default {
-  async fetch(request, env) {
+  async fetch(request, env, ctx) {
     const url = new URL(request.url);
     const { pathname } = url;
     const method = request.method;
@@ -137,7 +139,7 @@ export default {
       }
 
       if (pathname === '/api/notify' && method === 'POST') {
-        return await handleNotify(request, env, cors);
+        return await handleNotify(request, env, cors, ctx);
       }
 
       // ── Admin routes ───────────────────────────────────────
@@ -442,7 +444,7 @@ async function priceCartItems(cartItems, env) {
 }
 
 // ── Handle PayFast ITN Notification ─────────────────────────
-async function handleNotify(request, env, cors) {
+async function handleNotify(request, env, cors, ctx) {
   const rawBody = await request.text();
   const params = new URLSearchParams(rawBody);
   const data = Object.fromEntries(params);
@@ -482,11 +484,14 @@ async function handleNotify(request, env, cors) {
     return new Response('AMOUNT_MISMATCH', { status: 400, headers: cors });
   }
 
-  // 4. Mark the order as paid
-  await env.DB.prepare(`
+  // 4. Mark the order as paid (PayFast can repeat a notification, so skip orders already paid)
+  const update = await env.DB.prepare(`
     UPDATE orders SET status = 'PAID', payment_id = ?, amount_paid = ?, paid_at = ?, updated_at = ?
-    WHERE id = ?
+    WHERE id = ? AND status != 'PAID'
   `).bind(data.pf_payment_id, paid, now, now, order.id).run();
+
+  // 5. Email the buyer and the shop once, after answering PayFast so it isn't kept waiting
+  if (update.meta.changes) ctx.waitUntil(sendOrderEmails(order.id, env));
 
   return new Response('OK', { status: 200, headers: cors });
 }
@@ -740,6 +745,98 @@ function pfEncode(value) {
   return encodeURIComponent(value)
     .replace(/[!'()*~]/g, c => '%' + c.charCodeAt(0).toString(16).toUpperCase())
     .replace(/%20/g, '+');
+}
+
+// ── Order emails ─────────────────────────────────────────────
+// A failed email is only logged: the order is already paid and shows in admin.
+async function sendOrderEmails(orderId, env) {
+  if (!env.RESEND_API_KEY) return; // email isn't set up
+  try {
+    const o = await env.DB.prepare('SELECT * FROM orders WHERE id = ?').bind(orderId).first();
+    const items = safeJson(o.items, []);
+    const number = o.order_ref.slice(0, 8).toUpperCase();
+    const receiptUrl = `${env.RETURN_URL}?order=${o.order_ref}`;
+    const address = [o.street, o.city, o.province, o.postal_code].filter(Boolean);
+
+    const jobs = [sendEmail(env, {
+      to: o.email,
+      reply_to: env.ORDER_ALERT_EMAIL,
+      subject: `Your Ushoti Style order #${number}`,
+      html: orderEmailHtml(o, items, number, receiptUrl, address),
+      text: [
+        `Hi ${o.name_first}, thank you for your order. Your payment has been received.`,
+        `Order #${number}`,
+        ...items.map(i => `${i.qty} x ${i.name} (${i.option}): ${emailRand(i.price * i.qty)}`),
+        `Delivery: ${emailRand(o.shipping)}`,
+        `Total paid: ${emailRand(o.total)}`,
+        `Delivering to: ${address.join(', ')}`,
+        `Your receipt: ${receiptUrl}`,
+      ].join('\n'),
+    })];
+
+    if (env.ORDER_ALERT_EMAIL) {
+      jobs.push(sendEmail(env, {
+        to: env.ORDER_ALERT_EMAIL,
+        reply_to: o.email,
+        subject: `New paid order #${number}: ${emailRand(o.total)}`,
+        text: [
+          `${o.name_first} ${o.name_last} paid ${emailRand(o.total)}.`,
+          ...items.map(i => `${i.qty} x ${i.name} (${i.option})`),
+          `Deliver to: ${address.join(', ')}`,
+          `Phone: ${o.phone || 'not given'}`,
+          `Email: ${o.email}`,
+        ].join('\n'),
+      }));
+    }
+    await Promise.all(jobs);
+  } catch (e) {
+    console.error(`Order email failed for order ${orderId}: ${e.message}`);
+  }
+}
+
+async function sendEmail(env, message) {
+  const res = await fetch('https://api.resend.com/emails', {
+    method: 'POST',
+    headers: { 'Authorization': `Bearer ${env.RESEND_API_KEY}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ from: EMAIL_FROM, ...message }),
+  });
+  if (!res.ok) throw new Error(`Resend answered ${res.status}: ${await res.text()}`);
+}
+
+function emailRand(amount) {
+  return 'R' + Number(amount).toLocaleString('en-US');
+}
+
+function emailEscape(value) {
+  return String(value ?? '').replace(/[&<>"']/g, c => `&#${c.charCodeAt(0)};`);
+}
+
+function orderEmailHtml(o, items, number, receiptUrl, address) {
+  const row = (label, value, style = '') => `
+    <tr>
+      <td style="padding:10px 0;border-bottom:1px solid #e0d5c0;${style}">${label}</td>
+      <td align="right" style="padding:10px 0;border-bottom:1px solid #e0d5c0;white-space:nowrap;${style}">${value}</td>
+    </tr>`;
+  return `<!DOCTYPE html>
+<html><body style="margin:0;padding:24px 12px;background:#faf7f2;font-family:Arial,Helvetica,sans-serif;color:#1a1208;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:560px;margin:0 auto;background:#ffffff;">
+    <tr><td align="center" style="padding:24px;background:#1a1208;font-family:Georgia,serif;font-size:22px;font-weight:bold;letter-spacing:3px;color:#b8922a;">USHOTI STYLE</td></tr>
+    <tr><td style="padding:28px 24px;">
+      <h1 style="margin:0 0 8px;font-family:Georgia,serif;font-size:22px;">Thank you, ${emailEscape(o.name_first)}</h1>
+      <p style="margin:0 0 20px;line-height:1.6;">We've received your payment and we're getting your order ready.</p>
+      <p style="margin:0 0 8px;font-size:13px;color:#6b5f4f;">Order #${number}</p>
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="font-size:14px;">
+        ${items.map(i => row(`${i.qty} &times; ${emailEscape(i.name)}<br/><span style="font-size:12px;color:#6b5f4f;">${emailEscape(i.option)}</span>`, emailRand(i.price * i.qty))).join('')}
+        ${row('Delivery', emailRand(o.shipping))}
+        ${row('Total paid', emailRand(o.total), 'font-weight:bold;')}
+      </table>
+      <p style="margin:20px 0 4px;font-size:13px;color:#6b5f4f;">Delivering to</p>
+      <p style="margin:0 0 24px;line-height:1.5;font-size:14px;">${address.map(emailEscape).join('<br/>')}</p>
+      <a href="${emailEscape(receiptUrl)}" style="display:inline-block;padding:12px 24px;background:#b8922a;color:#ffffff;text-decoration:none;font-size:13px;font-weight:bold;letter-spacing:1px;">VIEW YOUR RECEIPT</a>
+    </td></tr>
+    <tr><td align="center" style="padding:16px 24px;font-size:12px;color:#6b5f4f;">Ushoti Style &middot; Proudly South African</td></tr>
+  </table>
+</body></html>`;
 }
 
 // Verify payment with PayFast server

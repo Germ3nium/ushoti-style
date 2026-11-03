@@ -938,6 +938,15 @@ body > *:not(#particles-canvas):not(.modal-overlay):not(#toast):not(.sidebar-ove
   font-size: 1rem;
 }
 
+.checkout-terms {
+  margin-top: 1rem;
+  color: var(--text-muted);
+  font-size: 0.78rem;
+  text-align: center;
+}
+
+.checkout-terms a { color: var(--gold); text-decoration: underline; }
+
 .payfast-badge {
   display: flex;
   align-items: center;
@@ -2082,3 +2091,22 @@ footer {
 /* A single slide doesn't need arrows or dots */
 .hero-slider.single-slide .slider-arrow,
 .hero-slider.single-slide .slider-dots { display: none; }
+
+/* Terms and Conditions page */
+.terms-page { max-width: 800px; }
+.terms-page h2 {
+  font-family: 'Playfair Display', serif;
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: var(--text);
+  margin: 2.2rem 0 0.8rem;
+}
+.terms-page p:not(.section-label) {
+  font-size: 0.92rem;
+  line-height: 1.75;
+  color: var(--text-soft);
+  margin-bottom: 0.8rem;
+}
+.terms-page strong { color: var(--text); }
+.terms-page a { color: var(--gold); overflow-wrap: anywhere; }
+.terms-page p.terms-updated { font-size: 0.8rem; color: var(--text-muted); }
