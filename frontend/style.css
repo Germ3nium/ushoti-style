@@ -2107,6 +2107,13 @@ footer {
   color: var(--text-soft);
   margin-bottom: 0.8rem;
 }
+.terms-page ul { margin: 0 0 0.8rem 1.2rem; }
+.terms-page li {
+  font-size: 0.92rem;
+  line-height: 1.75;
+  color: var(--text-soft);
+  margin-bottom: 0.6rem;
+}
 .terms-page strong { color: var(--text); }
 .terms-page a { color: var(--gold); overflow-wrap: anywhere; }
 .terms-page p.terms-updated { font-size: 0.8rem; color: var(--text-muted); }

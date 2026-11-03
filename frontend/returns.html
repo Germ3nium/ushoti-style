@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Return, Exchange &amp; Refund Policy | Ushoti Style</title>
+  <link rel="stylesheet" href="style.css"/>
+  <style>
+    .product-card { cursor: pointer; }
+  </style>
+</head>
+<body>
+
+  <div class="sidebar-overlay" id="sidebar-overlay">
+    <div class="sidebar">
+      <div class="sidebar-header">
+        <span>Shop by Category</span>
+        <button class="sidebar-close" onclick="closeSidebar()">&times;</button>
+      </div>
+      <div class="sidebar-section open">
+        <button class="sidebar-section-toggle" onclick="toggleSidebarSection(this)">
+          Sneakers
+          <svg viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"/></svg>
+        </button>
+        <div class="sidebar-links">
+          <a href="sneakers.html">View All Sneakers</a>
+          <a href="kids.html" class="promo">Kids Shoes</a>
+          <a href="sneakers.html" class="promo">New Arrivals</a>
+          <a href="sale.html" class="promo">On Sale</a>
+        </div>
+      </div>
+      <div class="sidebar-section">
+        <button class="sidebar-section-toggle" onclick="toggleSidebarSection(this)">
+          Hair
+          <svg viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"/></svg>
+        </button>
+        <div class="sidebar-links">
+          <a href="hair.html">View All Hair</a>
+          <a href="hair.html" class="promo">New Arrivals</a>
+          <a href="hair.html" class="promo">On Sale</a>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <nav>
+    <div class="nav-left">
+      <button class="sidebar-menu-btn" onclick="openSidebar()" aria-label="Open menu">
+        <svg viewBox="0 0 24 24"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+      </button>
+      <a href="index.html" class="logo">Ushoti Style</a>
+    </div>
+    <div class="nav-links">
+      <a href="index.html" class="nav-hide-mobile">Home</a>
+      <a href="sneakers.html">Sneakers</a>
+      <a href="hair.html">Hair</a>
+      <a href="cart.html" class="cart-link">
+        <svg viewBox="0 0 24 24"><path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 01-8 0"/></svg>
+        <span>Cart</span>
+        <span class="cart-count">0</span>
+      </a>
+    </div>
+  </nav>
+
+  <div class="section terms-page" id="returns">
+    <p class="section-label">Legal</p>
+    <h1 class="section-title">Return and Refund Policy</h1>
+    <div class="section-divider"></div>
+    <p class="terms-updated">Last Updated: November 2026</p>
+    <p>At Ushoti Style, customer satisfaction and genuine trust are our priorities. In strict compliance with the South African Consumer Protection Act (CPA), this policy outlines the conditions for returns, exchanges, and refunds.</p>
+
+    <h2>1. 7-Day Inspection &amp; Return Window</h2>
+    <p>You are entitled to log a return or exchange request within 7 calendar days of receiving your delivery.</p>
+
+    <h2>2. Eligibility Requirements for Returns</h2>
+    <p>Because our footwear consists of limited collectible inventory, returned items must satisfy all of the following conditions:</p>
+    <ul>
+      <li><strong>Deadstock / Unworn Condition:</strong> The sneakers must be completely unworn, uncreased, with no outdoor or indoor scuffs, dirt, odor, or sock lint.</li>
+      <li><strong>Complete Packaging:</strong> The original manufacturer shoe box, interior tissue wrapping, extra laces, verification tags, and box accessories must be intact and returned undamaged.</li>
+      <li><strong>Protective Packaging:</strong> Do not stick shipping labels or packing tape directly onto the original shoe box. The shoe box must be placed inside an outer protective cardboard box or courier flyer bag.</li>
+    </ul>
+
+    <h2>3. Sizing Exchanges</h2>
+    <p>Sizing exchanges depend entirely on stock availability.</p>
+    <p>If the alternative size requested is unavailable, the customer may choose between store credit or a full refund to their original payment method.</p>
+    <p>Return courier charges for subjective preference or incorrect size selection by the customer are the responsibility of the customer.</p>
+
+    <h2>4. Damaged, Defective, or Incorrect Deliveries</h2>
+    <p>If your package arrives damaged, or the incorrect item or size was dispatched, notify us at <a href="mailto:support@ushotistyle.co.za">support@ushotistyle.co.za</a> within 48 hours of delivery with clear photos of the issue.</p>
+    <p>In the event of a verified supplier defect or dispatch error, Ushoti Style will arrange and cover all collection and replacement courier fees.</p>
+
+    <h2>5. Refund Processing Timeline</h2>
+    <p>Once a returned item is received at our facility, it undergoes an authentication and condition inspection within 1 to 2 business days.</p>
+    <p>Once approved, refunds are credited back to the customer's original payment method (via Payfast) within 3 to 7 business days, depending on the receiving bank's clearance times.</p>
+  </div>
+
+  <footer>
+    <div class="footer-inner">
+      <div class="footer-brand">
+        <a href="index.html" class="logo">Ushoti Style</a>
+        <p>Premium sneakers and hair, delivered with care across South Africa. Style is not a luxury — it is a standard.</p>
+      </div>
+      <div class="footer-col">
+        <h5>Shop</h5>
+        <a href="sneakers.html">Sneakers</a>
+        <a href="kids.html">Kids Sneakers</a>
+        <a href="hair.html">Hair</a>
+        <a href="sale.html">On Sale</a>
+        <a href="cart.html">My Cart</a>
+      </div>
+      <div class="footer-col">
+        <h5>Information</h5>
+        <a href="#">Shipping Policy</a>
+        <a href="returns.html">Return, Exchange &amp; Refund Policy</a>
+        <a href="#">Privacy Policy</a>
+        <a href="terms.html">Terms &amp; Conditions</a>
+        <a href="#">Contact Us</a>
+      </div>
+    </div>
+    <div class="footer-bottom">
+      <p>&copy; 2025 <span>Ushoti Style</span>. All rights reserved.</p>
+      <p>Proudly South African</p>
+    </div>
+  </footer>
+
+  <script src="app.js"></script>
+</body>
+</html>
