@@ -107,6 +107,7 @@ function analysePhoto(img) {
       top: Math.max(0, top - padY), bottom: Math.min(1, bottom + padY)
     },
     studio: spread < 14, // an even background can be extended, so the photo may shrink to fit
+    pale: avgLight > 150,
     colour: `rgb(${ring.map(v => Math.round(v / ringCount)).join(',')})`
   };
 }
@@ -150,6 +151,9 @@ function placePhoto(el) {
   el.style.setProperty('--photo-h', `${ph}px`);
   el.style.backgroundColor = info.colour;
   el.classList.add('photo-placed');
+  // A plain background needs no dark shading: the text sits straight on it
+  el.classList.toggle('photo-plain', info.studio);
+  el.classList.toggle('photo-pale', info.studio && info.pale);
   el.classList.toggle('photo-fade', x > 0 || y > 0 || x + pw < W || y + ph < H);
 }
 
@@ -195,7 +199,7 @@ function renderSlides(list) {
   currentSlide = 0;
 }
 
-// The hero stays hidden until the real slides arrive, so the backup slides
+// The hero stays empty until the real slides arrive, so the backup slides
 // written into the page never flash up first
 function showSlides() {
   document.querySelector('.hero-slider').classList.remove('hero-loading');

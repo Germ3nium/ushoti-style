@@ -211,7 +211,7 @@ body > *:not(#particles-canvas):not(.modal-overlay):not(#toast):not(.sidebar-ove
   height: 92vh;
   min-height: 560px;
   overflow: hidden;
-  background: var(--bg-deep);
+  background: var(--bg);
 }
 
 /* Slideshow progress bar */
@@ -236,6 +236,9 @@ body > *:not(#particles-canvas):not(.modal-overlay):not(#toast):not(.sidebar-ove
   display: flex;
   align-items: center;
 }
+
+/* Text waits for its picture, whose background decides the text colour */
+.slide:not(.photo-ready) .slide-content { visibility: hidden; }
 
 /* Zooming with transform instead of background-size keeps the photo covering
    the slide on tall phone screens (a %-width background left gaps and repeated) */
@@ -270,6 +273,15 @@ body > *:not(#particles-canvas):not(.modal-overlay):not(#toast):not(.sidebar-ove
   -webkit-mask-composite: source-in;
   mask-composite: intersect;
 }
+
+.slide.photo-plain .slide-overlay { display: none; }
+
+.slide.photo-pale .hero-eyebrow { color: var(--gold-dim); }
+.slide.photo-pale .slide-title { color: var(--text); }
+.slide.photo-pale .slide-title span { color: var(--gold-dim); }
+.slide.photo-pale .slide-content p { color: var(--text-soft); }
+.slide.photo-pale .btn-outline { border-color: var(--text); color: var(--text); }
+.slide.photo-pale .btn-outline:hover { background: var(--text); border-color: var(--text); color: var(--text-light); }
 
 .hero-loading .slide,
 .hero-loading .slider-arrow,
@@ -365,14 +377,15 @@ body > *:not(#particles-canvas):not(.modal-overlay):not(#toast):not(.sidebar-ove
   z-index: 10;
   background: none;
   border: none;
-  color: var(--text);
+  color: #fff;
+  mix-blend-mode: difference; /* shows up on both pale and dark pictures */
   width: 48px;
   height: 48px;
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  opacity: 0.20;
+  opacity: 0.6;
   transition: color 0.2s, opacity 0.2s;
 }
 
@@ -404,7 +417,7 @@ body > *:not(#particles-canvas):not(.modal-overlay):not(#toast):not(.sidebar-ove
 .dot {
   width: 24px;
   height: 2px;
-  background: rgba(255,255,255,0.3);
+  background: rgba(128,128,128,0.55);
   border: none;
   cursor: pointer;
   transition: background 0.3s, width 0.3s;
@@ -435,7 +448,7 @@ body > *:not(#particles-canvas):not(.modal-overlay):not(#toast):not(.sidebar-ove
     background: linear-gradient(to top, rgba(0,0,0,0.9) 0%, rgba(0,0,0,0.8) calc(100% - 50px), rgba(0,0,0,0) 100%);
   }
   /* Arrows move to the bottom corner, level with the dots, away from the text and product */
-  .slider-arrow { top: auto; bottom: 1.1rem; transform: none; color: var(--text-light); opacity: 0.7; }
+  .slider-arrow { top: auto; bottom: 1.1rem; transform: none; }
   .slider-dots { left: 2rem; }
   .slider-arrow:hover { transform: none; }
   .slider-prev { left: auto; right: 3.8rem; }
