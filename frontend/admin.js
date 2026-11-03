@@ -111,6 +111,7 @@ const MAX_SLIDES = 6;
 const SLIDE_LINKS = [
   ['', 'No button'],
   ['sneakers.html', 'Sneakers page'],
+  ['kids.html', 'Kids Sneakers page'],
   ['hair.html', 'Hair page'],
   ['sale.html', 'On Sale page'],
   ['products.html', 'All products page'],
@@ -532,7 +533,7 @@ function renderProducts() {
         ${p.badge ? `<span class="admin-pill">${escapeHtml(p.badge)}</span>` : ''}
         ${p.sale_price && p.sale_price < p.price ? '<span class="admin-pill admin-pill-sale">Sale</span>' : ''}
       </td>
-      <td>${p.category === 'sneakers' ? 'Sneakers' : 'Hair'}</td>
+      <td>${CATEGORY_NAMES[p.category] || p.category}</td>
       <td class="num">${p.sale_price && p.sale_price < p.price
         ? `<s class="admin-was">${formatRand(p.price)}</s> ${formatRand(p.sale_price)}`
         : formatRand(p.price)}</td>
@@ -608,10 +609,18 @@ function addColourRow(name = '', hex = '#000000') {
   $('pf-colours').appendChild(row);
 }
 
+const CATEGORY_NAMES = { sneakers: 'Sneakers', kids: 'Kids Sneakers', hair: 'Hair' };
+const ADULT_SIZES = [4, 5, 6, 7, 8, 9, 10, 11, 12, 13];
+
+// Kids sizes show in the order they're typed, so suggest the usual order
+function syncSizesPlaceholder() {
+  $('pf-sizes').placeholder = ($('pf-category').value === 'kids' ? [10, 11, 12, 13, 1, 2, 3] : ADULT_SIZES).join(', ');
+}
+
 function syncCategoryFields() {
-  const sneakers = $('pf-category').value === 'sneakers';
-  $('pf-sneaker-fields').hidden = !sneakers;
-  $('pf-hair-fields').hidden = sneakers;
+  const hair = $('pf-category').value === 'hair';
+  $('pf-sneaker-fields').hidden = hair;
+  $('pf-hair-fields').hidden = !hair;
 }
 
 const MAX_PHOTOS = 10;
@@ -764,12 +773,13 @@ function openProductEditor(p = null) {
   $('pf-image-link').value  = '';
   photos = p ? [...(p.images || [p.image])] : [];
   $('pf-active').checked    = p ? !!p.active : true;
-  $('pf-sizes').value       = (opts.sizes || (p ? [] : [4, 5, 6, 7, 8, 9, 10, 11, 12, 13])).join(', ');
+  $('pf-sizes').value       = (opts.sizes || (p ? [] : ADULT_SIZES)).join(', ');
   $('pf-lengths').value     = (opts.lengths || []).join(', ');
   (opts.colours || []).forEach(c => addColourRow(c.name, c.hex));
   if (!p) addColourRow();
 
   syncCategoryFields();
+  syncSizesPlaceholder();
   renderPhotos();
   dialog.showModal();
   $('pf-name').focus();
@@ -777,7 +787,12 @@ function openProductEditor(p = null) {
 
 $('add-product-btn').addEventListener('click', () => openProductEditor());
 $('add-colour-btn').addEventListener('click', () => addColourRow());
-$('pf-category').addEventListener('change', syncCategoryFields);
+$('pf-category').addEventListener('change', () => {
+  syncCategoryFields();
+  // New kids products start blank: the adult sizes don't apply to them
+  if (!editingId) $('pf-sizes').value = $('pf-category').value === 'kids' ? '' : ADULT_SIZES.join(', ');
+  syncSizesPlaceholder();
+});
 $('pf-upload-btn').addEventListener('click', () => $('pf-upload').click());
 $('pf-upload').addEventListener('change', e => {
   const files = [...e.target.files].slice(0, MAX_PHOTOS - photos.length);
@@ -829,7 +844,7 @@ form.addEventListener('submit', async e => {
     description: $('pf-description').value.trim(),
     images:      photos,
     active:      $('pf-active').checked,
-    options: category === 'sneakers'
+    options: category !== 'hair'
       ? {
           sizes: $('pf-sizes').value,
           colours: [...$('pf-colours').querySelectorAll('.admin-colour-row')].map(row => ({

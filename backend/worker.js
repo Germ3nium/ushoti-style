@@ -34,7 +34,7 @@ const MAX_STORIES = 2;
 const MAX_STORY_FACTS = 4;
 // Home page slideshow. Buttons may only lead to shop pages or home page sections.
 const MAX_SLIDES = 6;
-const SLIDE_LINKS = ['sneakers.html', 'hair.html', 'sale.html', 'products.html', '#collections', '#featured-section'];
+const SLIDE_LINKS = ['sneakers.html', 'kids.html', 'hair.html', 'sale.html', 'products.html', '#collections', '#featured-section'];
 const SLIDE_FOCUS = ['left', 'center', 'right'];
 const DEFAULT_SLIDES = [
   {
@@ -90,7 +90,8 @@ const DEFAULT_STORIES = [
     ],
   },
 ];
-const CATEGORIES   = ['sneakers', 'hair'];
+const CATEGORIES   = ['sneakers', 'kids', 'hair'];
+const ID_PREFIXES  = { sneakers: 'snk', kids: 'kid', hair: 'hr' };
 const FULFILMENT   = ['NEW', 'PROCESSING', 'SHIPPED', 'DELIVERED', 'CANCELLED'];
 const IMAGE_TYPES  = ['image/jpeg', 'image/png', 'image/webp'];
 const MAX_IMAGE_BYTES = 1500000; // D1 rows top out at 2 MB
@@ -424,7 +425,7 @@ async function priceCartItems(cartItems, env) {
     if (!p) return { error: 'A product in your cart is no longer available' };
 
     let option;
-    if (p.category === 'sneakers') {
+    if (p.category !== 'hair') { // sneakers and kids sneakers
       const size   = Number(rest[0]);
       const colour = (p.options.colours || []).find(c => c.hex.toLowerCase() === rest.slice(1).join('-').toLowerCase());
       if (!(p.options.sizes || []).includes(size) || !colour) return { error: `Please re-select options for ${p.name}` };
@@ -579,7 +580,7 @@ async function handleSaveProduct(id, request, env, cors) {
   }
 
   // Ids must not contain dashes — cart item ids are "<productId>-<option>"
-  const newId = (p.category === 'sneakers' ? 'snk' : 'hr') + crypto.randomUUID().replace(/-/g, '').slice(0, 8);
+  const newId = ID_PREFIXES[p.category] + crypto.randomUUID().replace(/-/g, '').slice(0, 8);
   await env.DB.prepare(`
     INSERT INTO products (id, category, name, price, sale_price, badge, description, image, images, options, active, sort_order, created_at, updated_at)
     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
@@ -625,7 +626,7 @@ async function handleGetImage(id, env, cors) {
 
 function validateProduct(body) {
   const category = String(body.category || '');
-  if (!CATEGORIES.includes(category)) return { error: 'Category must be sneakers or hair' };
+  if (!CATEGORIES.includes(category)) return { error: 'Category must be sneakers, kids or hair' };
 
   const name = String(body.name || '').trim();
   if (!name) return { error: 'Name is required' };
@@ -651,8 +652,9 @@ function validateProduct(body) {
 
   const opts = body.options || {};
   let options;
-  if (category === 'sneakers') {
-    const sizes = toNumberList(opts.sizes);
+  if (category !== 'hair') { // sneakers and kids sneakers
+    // Kids sizes run 10-13 then start again at 1, so keep the order the admin typed
+    const sizes = toNumberList(opts.sizes, { sorted: category !== 'kids' });
     const colours = (Array.isArray(opts.colours) ? opts.colours : [])
       .map(c => ({ name: String(c.name || '').trim(), hex: String(c.hex || '').toLowerCase() }))
       .filter(c => c.name && /^#[0-9a-f]{6}$/.test(c.hex));
@@ -712,9 +714,10 @@ function safeJson(text, fallback) {
   try { return JSON.parse(text); } catch { return fallback; }
 }
 
-function toNumberList(value) {
+function toNumberList(value, { sorted = true } = {}) {
   const list = Array.isArray(value) ? value : String(value || '').split(',');
-  return [...new Set(list.map(Number).filter(n => n > 0))].sort((a, b) => a - b);
+  const numbers = [...new Set(list.map(Number).filter(n => n > 0))];
+  return sorted ? numbers.sort((a, b) => a - b) : numbers;
 }
 
 // Generate PayFast MD5 signature

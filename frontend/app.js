@@ -118,7 +118,7 @@ function tagsHtml(p) {
 
 function productCardHtml(p, { featured = false } = {}) {
   const name = escapeHtml(p.name);
-  const label = p.category === 'sneakers' ? 'Footwear' : 'Hair &amp; Wigs';
+  const label = p.category === 'hair' ? 'Hair &amp; Wigs' : 'Footwear';
   const photos = productPhotos(p);
   return `
     <div class="product-card" data-category="${p.category}" data-id="${escapeHtml(p.id)}" tabindex="0" role="button" aria-label="${name}, ${isOnSale(p) ? `on sale, was ${formatRand(p.was_price)}, now ` : ''}${formatRand(p.price)}${photos.length > 1 ? `, ${photos.length} photos` : ''}">
@@ -167,8 +167,8 @@ function bindProductCards(container) {
   });
 }
 
-// Fills any <div data-products="sneakers|hair"> grid on the page;
-// add data-sale to show only that category's sale items
+// Fills any <div data-products="sneakers|kids|hair"> grid on the page (list several
+// categories with spaces); add data-sale to show only their sale items
 function renderCategoryGrids() {
   const grids = document.querySelectorAll('[data-products]');
   if (!grids.length) return;
@@ -181,7 +181,8 @@ function renderCategoryGrids() {
   loadProducts().then(list => {
     grids.forEach(grid => {
       const saleOnly = grid.hasAttribute('data-sale');
-      const items = list.filter(p => p.category === grid.dataset.products && (!saleOnly || isOnSale(p)));
+      const categories = grid.dataset.products.split(' ');
+      const items = list.filter(p => categories.includes(p.category) && (!saleOnly || isOnSale(p)));
       grid.innerHTML = items.length
         ? items.map(p => productCardHtml(p)).join('')
         : `<p class="products-status">${saleOnly
@@ -217,8 +218,8 @@ function openProductModal(id) {
   loadProducts().then(() => {
     const p = productsById[id];
     if (!p) return showToast('Sorry, that product is no longer available.');
-    if (p.category === 'sneakers') openSneakerModal(p);
-    else openHairModal(p);
+    if (p.category === 'hair') openHairModal(p);
+    else openSneakerModal(p);
   }).catch(() => showToast('Couldn\'t load product details. Please try again.'));
 }
 
