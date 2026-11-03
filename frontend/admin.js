@@ -141,6 +141,7 @@ function renderSlideEditors(slides) {
           <div>
             <button type="button" class="btn btn-ghost admin-btn-sm" data-slide-upload>Choose picture</button>
             <input type="file" accept="image/*" hidden data-slide-file/>
+            <label class="admin-check"><input type="checkbox" data-slide-shift checked/> Move the product to the right, clear of the text</label>
             <p class="admin-muted admin-hint" data-slide-status></p>
           </div>
         </div>
@@ -237,7 +238,10 @@ slidesBox.addEventListener('change', async e => {
   button.disabled = true;
   status.textContent = 'Uploading…';
   try {
-    const blob = await resizePhoto(input.files[0], 1920); // slides fill the screen, so keep them sharp
+    const file = input.files[0];
+    const blob = box.querySelector('[data-slide-shift]').checked
+      ? await frameSlidePhoto(file)
+      : await resizePhoto(file, 1920); // slides fill the screen, so keep them sharp
     const { url } = await api('images', { method: 'POST', body: blob, headers: { 'Content-Type': 'image/jpeg' } });
     box.querySelector('[data-field="image"]').value = url;
     const img = box.querySelector('.admin-story-photo img');
@@ -655,6 +659,62 @@ async function resizePhoto(file, maxSide = 1200) {
   ctx.fillStyle = '#fff'; // transparent PNGs would otherwise turn black
   ctx.fillRect(0, 0, canvas.width, canvas.height);
   ctx.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+  bitmap.close();
+  return new Promise((resolve, reject) =>
+    canvas.toBlob(b => b ? resolve(b) : reject(new Error('Could not read that photo')), 'image/jpeg', 0.85));
+}
+
+// Slide text sits on the left, so a centred product would hide behind it.
+// Redraw the photo on a 16:9 canvas with its middle at 65% across, and fill
+// the space this opens up by stretching the photo's edge, faded in.
+const SLIDE_W = 1920, SLIDE_H = 1080, SLIDE_CENTRE = 0.65, SLIDE_FADE = 260;
+
+// Paint the edge column at `edge` out to the canvas side, fading into the photo
+function extendEdge(ctx, edge, inward) {
+  const left = inward > 0;
+  const width = left ? edge + SLIDE_FADE : SLIDE_W - edge + SLIDE_FADE;
+  const strip = document.createElement('canvas');
+  strip.width = width;
+  strip.height = SLIDE_H;
+  const sctx = strip.getContext('2d');
+  sctx.drawImage(ctx.canvas, left ? edge : edge - 2, 0, 2, SLIDE_H, 0, 0, width, SLIDE_H);
+  const fadeFrom = left ? edge : SLIDE_FADE, fadeTo = left ? width : 0;
+  const mask = sctx.createLinearGradient(fadeFrom, 0, fadeTo, 0);
+  mask.addColorStop(0, '#000');
+  mask.addColorStop(1, 'rgba(0,0,0,0)');
+  sctx.globalCompositeOperation = 'destination-in';
+  sctx.fillStyle = mask;
+  sctx.fillRect(0, 0, width, SLIDE_H);
+  ctx.drawImage(strip, left ? 0 : edge - SLIDE_FADE, 0);
+}
+
+async function frameSlidePhoto(file) {
+  const bitmap = await createImageBitmap(file);
+  const scale = SLIDE_H / bitmap.height;
+  const w = bitmap.width * scale;
+  const canvas = document.createElement('canvas');
+  canvas.width = SLIDE_W;
+  canvas.height = SLIDE_H;
+  const ctx = canvas.getContext('2d');
+  ctx.fillStyle = '#fff'; // transparent PNGs would otherwise turn black
+  ctx.fillRect(0, 0, SLIDE_W, SLIDE_H);
+
+  if (w < SLIDE_W * 0.6) {
+    // Tall photo: stand it at the right over a blurred copy of itself
+    const cover = Math.max(SLIDE_W / bitmap.width, SLIDE_H / bitmap.height) * 1.1; // oversize so the blur has no light rim
+    ctx.filter = 'blur(40px) brightness(0.75)';
+    ctx.drawImage(bitmap, (SLIDE_W - bitmap.width * cover) / 2, (SLIDE_H - bitmap.height * cover) / 2,
+      bitmap.width * cover, bitmap.height * cover);
+    ctx.filter = 'none';
+    ctx.drawImage(bitmap, Math.round(Math.min(SLIDE_W - w, SLIDE_W * SLIDE_CENTRE - w / 2)), 0, w, SLIDE_H);
+  } else {
+    // Wide photo: slide it right and stretch its left (and right) edge to fill
+    const x = Math.round(SLIDE_W * SLIDE_CENTRE - w / 2);
+    ctx.drawImage(bitmap, x, 0, w, SLIDE_H);
+    if (x > 0) extendEdge(ctx, x, 1);
+    const right = Math.round(x + w);
+    if (right < SLIDE_W) extendEdge(ctx, right, -1);
+  }
   bitmap.close();
   return new Promise((resolve, reject) =>
     canvas.toBlob(b => b ? resolve(b) : reject(new Error('Could not read that photo')), 'image/jpeg', 0.85));
