@@ -247,7 +247,33 @@ body > *:not(#particles-canvas):not(.modal-overlay):not(#toast):not(.sidebar-ove
   background-size: cover;
   background-position: var(--slide-focus, center);
   background-repeat: no-repeat;
+  opacity: 0;
+  transition: opacity 0.5s ease;
 }
+
+.slide.photo-ready::before { opacity: 1; }
+
+/* home.js has found the product: the picture is sized and placed to clear the text */
+.slide.photo-placed::before {
+  inset: auto;
+  left: var(--photo-x);
+  top: var(--photo-y);
+  width: var(--photo-w);
+  height: var(--photo-h);
+  background-size: 100% 100%;
+}
+
+/* Blend picture edges into the matching background colour when they show */
+.slide.photo-fade::before {
+  -webkit-mask-image: linear-gradient(to right, transparent, #000 6%, #000 94%, transparent), linear-gradient(to bottom, transparent, #000 6%, #000 94%, transparent);
+  mask-image: linear-gradient(to right, transparent, #000 6%, #000 94%, transparent), linear-gradient(to bottom, transparent, #000 6%, #000 94%, transparent);
+  -webkit-mask-composite: source-in;
+  mask-composite: intersect;
+}
+
+.hero-loading .slide,
+.hero-loading .slider-arrow,
+.hero-loading .slider-dots { visibility: hidden; }
 
 .slide.active {
   opacity: 1;
@@ -281,7 +307,7 @@ body > *:not(#particles-canvas):not(.modal-overlay):not(#toast):not(.sidebar-ove
 .slide-overlay {
   position: absolute;
   inset: 0;
-  background: linear-gradient(90deg, rgba(0,0,0,0.78) 0%, rgba(0,0,0,0.35) 60%, rgba(0,0,0,0.1) 100%);
+  background: linear-gradient(90deg, rgba(0,0,0,0.82) 0%, rgba(0,0,0,0.72) 30%, rgba(0,0,0,0.5) 44%, rgba(0,0,0,0.16) 57%, rgba(0,0,0,0) 72%);
 }
 
 .slide-content {
@@ -392,15 +418,31 @@ body > *:not(#particles-canvas):not(.modal-overlay):not(#toast):not(.sidebar-ove
 
 @media (max-width: 768px) {
   .hero-slider { height: 80vh; }
-  /* Which part of the picture stays in view on phones (set per slide in admin) */
+  /* Used only for an outside photo home.js can't read */
   .slide { --slide-focus: 72% center; }
-  .slide[data-focus="center"] { --slide-focus: center; }
-  .slide[data-focus="left"] { --slide-focus: 28% center; }
-  .slide-content { padding: 0 2rem; }
   .slide-content .slide-title { font-size: 2.6rem; }
   .slider-dots { left: 2rem; }
   .slider-prev { left: 1rem; }
   .slider-next { right: 1rem; }
+}
+
+/* Phones and tablets: text along the bottom, product above it (home.js matches this width) */
+@media (max-width: 1024px) {
+  .slide { align-items: flex-end; }
+  .slide-content { padding: 0 2rem 3.5rem; }
+  .slide-overlay {
+    top: calc(var(--text-top, 45%) - 40px);
+    background: linear-gradient(to top, rgba(0,0,0,0.9) 0%, rgba(0,0,0,0.8) calc(100% - 50px), rgba(0,0,0,0) 100%);
+  }
+  /* Arrows move to the bottom corner, level with the dots, away from the text and product */
+  .slider-arrow { top: auto; bottom: 1.1rem; transform: none; color: var(--text-light); opacity: 0.7; }
+  .slider-dots { left: 2rem; }
+  .slider-arrow:hover { transform: none; }
+  .slider-prev { left: auto; right: 3.8rem; }
+  .slider-next { right: 1rem; }
+  .hero-actions { flex-wrap: nowrap; gap: 0.6rem; }
+  .hero-actions .btn { padding: 0.7rem 1rem; font-size: 0.66rem; letter-spacing: 1px; white-space: nowrap; }
+  .slide-content p { margin-bottom: 1.2rem; }
 }
 
 /* ── BUTTONS ─────────────────────────────────────────────────── */
@@ -1920,7 +1962,12 @@ footer {
   .hero h1 { font-size: 2.8rem; }
   .hero { padding: 5rem 1.5rem; }
   .section { padding: 3rem 1.5rem; }
-  .category-grid { grid-template-columns: 1fr; }
+  .category-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.75rem; }
+  .category-card-img { height: 230px; }
+  .category-card-img-content { padding: 1rem; }
+  .category-card-img-content h3 { font-size: 1.25rem; margin-bottom: 0.6rem; }
+  .category-card-img-content p { display: none; }
+  .category-card-img-content .btn { padding: 0.6rem 0.4rem; font-size: 0.62rem; letter-spacing: 1px; text-align: center; }
   .footer-inner { grid-template-columns: 1fr; gap: 2rem; }
   .footer-bottom { flex-direction: column; gap: 0.5rem; text-align: center; }
   .form-row { grid-template-columns: 1fr; }
