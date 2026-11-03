@@ -1975,12 +1975,7 @@ footer {
   .hero h1 { font-size: 2.8rem; }
   .hero { padding: 5rem 1.5rem; }
   .section { padding: 3rem 1.5rem; }
-  .category-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.75rem; }
-  .category-card-img { height: 230px; }
-  .category-card-img-content { padding: 1rem; }
-  .category-card-img-content h3 { font-size: 1.25rem; margin-bottom: 0.6rem; }
-  .category-card-img-content p { display: none; }
-  .category-card-img-content .btn { padding: 0.6rem 0.4rem; font-size: 0.62rem; letter-spacing: 1px; text-align: center; }
+  .category-grid { grid-template-columns: 1fr; }
   .footer-inner { grid-template-columns: 1fr; gap: 2rem; }
   .footer-bottom { flex-direction: column; gap: 0.5rem; text-align: center; }
   .form-row { grid-template-columns: 1fr; }
