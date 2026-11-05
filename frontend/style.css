@@ -993,6 +993,33 @@ body > *:not(#particles-canvas):not(.modal-overlay):not(#toast):not(.sidebar-ove
   font-size: 1rem;
 }
 
+.delivery-options { display: grid; gap: 0.6rem; margin-bottom: 1.4rem; }
+
+.delivery-option {
+  display: flex;
+  align-items: center;
+  gap: 0.8rem;
+  padding: 0.9rem 1rem;
+  border: 1px solid var(--border);
+  cursor: pointer;
+}
+
+.delivery-option:has(input:checked) { border-color: var(--gold); }
+
+.delivery-option input { width: 18px; height: 18px; flex: none; accent-color: var(--gold); }
+
+.delivery-option-text { flex: 1; min-width: 0; }
+
+.delivery-option-text strong { display: block; font-size: 0.88rem; font-weight: 600; color: var(--text); }
+
+.delivery-option-text small { font-size: 0.75rem; color: var(--text-muted); }
+
+.delivery-option-price { font-size: 0.88rem; font-weight: 600; color: var(--gold); white-space: nowrap; }
+
+.delivery-hint { margin-top: 0.5rem; font-size: 0.75rem; line-height: 1.6; color: var(--text-muted); }
+
+.delivery-hint a { color: var(--gold); text-decoration: underline; }
+
 .checkout-terms {
   margin-top: 1rem;
   color: var(--text-muted);

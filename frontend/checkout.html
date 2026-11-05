@@ -95,7 +95,34 @@
 
       <hr class="hr-dark"/>
 
-      <h2>Delivery Address</h2>
+      <h2>Delivery</h2>
+      <div class="delivery-options">
+        <label class="delivery-option">
+          <input type="radio" name="delivery_method" value="courier" checked/>
+          <span class="delivery-option-text"><strong>Standard courier to my door</strong><small>About 2 weeks</small></span>
+          <span class="delivery-option-price" id="courier-price"></span>
+        </label>
+        <label class="delivery-option" id="express-option" hidden>
+          <input type="radio" name="delivery_method" value="express"/>
+          <span class="delivery-option-text"><strong>Express courier to my door</strong><small id="express-time"></small></span>
+          <span class="delivery-option-price" id="express-price"></span>
+        </label>
+        <label class="delivery-option">
+          <input type="radio" name="delivery_method" value="paxi"/>
+          <span class="delivery-option-text"><strong>Standard PAXI collection point</strong><small>About 2 weeks</small></span>
+          <span class="delivery-option-price" id="paxi-price"></span>
+        </label>
+      </div>
+
+      <div id="paxi-fields" hidden>
+        <div class="form-group">
+          <label for="paxi_point">PAXI Point</label>
+          <input type="text" id="paxi_point" maxlength="120" placeholder="Store name and code"/>
+          <p class="delivery-hint">Not sure of your point? Find it on the <a href="https://www.paxi.co.za/" target="_blank" rel="noopener">PAXI website</a>. Please also enter your phone number above, so you can be told when your parcel is ready.</p>
+        </div>
+      </div>
+
+      <div id="address-fields">
       <div class="form-group">
         <label>Street Address</label>
         <input type="text" id="street" placeholder="123 Main Street" required/>
@@ -124,6 +151,7 @@
           <option>Free State</option>
           <option>Northern Cape</option>
         </select>
+      </div>
       </div>
 
       <p class="checkout-terms">By paying, you agree to our <a href="terms.html" target="_blank" rel="noopener">Terms &amp; Conditions</a>.</p>

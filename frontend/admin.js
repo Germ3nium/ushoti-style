@@ -100,6 +100,9 @@ async function loadSettings() {
   if (!res.ok) throw new Error(`Couldn't load settings (${res.status})`);
   const settings = await res.json();
   document.getElementById('set-shipping').value = settings.shipping_fee;
+  document.getElementById('set-paxi').value = settings.paxi_fee ?? 150;
+  document.getElementById('set-express-fee').value = settings.express_fee ?? '';
+  document.getElementById('set-express-time').value = settings.express_time || '';
   document.getElementById('set-banner').value = (settings.banner || []).join('\n');
 
   renderSlideEditors(settings.slides || []);
@@ -326,6 +329,9 @@ document.getElementById('settings-form').addEventListener('submit', async e => {
       method: 'PUT',
       body: JSON.stringify({
         shipping_fee: Number(document.getElementById('set-shipping').value),
+        paxi_fee: Number(document.getElementById('set-paxi').value),
+        express_fee: document.getElementById('set-express-fee').value,
+        express_time: document.getElementById('set-express-time').value,
         banner: document.getElementById('set-banner').value.split('\n').map(m => m.trim()).filter(Boolean),
         slides: readSlideEditors(),
         stories: readStoryEditors()

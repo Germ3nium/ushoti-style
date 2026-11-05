@@ -25,6 +25,9 @@ const API_BASE = ['localhost', '127.0.0.1', ''].includes(location.hostname)
 // Delivery fee and banner messages are set on the admin Settings tab.
 // R80 shows until the real fee loads; the backend always charges its own stored fee.
 let shippingFee = 80;
+let paxiFee = 150;
+let expressFee = null; // null until the admin turns Express on
+let expressTime = '';
 let settingsPromise = null;
 
 function loadSettings() {
@@ -33,6 +36,9 @@ function loadSettings() {
       .then(res => res.ok ? res.json() : Promise.reject(new Error(`HTTP ${res.status}`)))
       .then(settings => {
         if (Number.isFinite(settings.shipping_fee)) shippingFee = settings.shipping_fee;
+        if (Number.isFinite(settings.paxi_fee)) paxiFee = settings.paxi_fee;
+        if (Number.isFinite(settings.express_fee)) expressFee = settings.express_fee;
+        expressTime = settings.express_time || '';
         return settings;
       });
   }
@@ -548,7 +554,7 @@ function renderCart() {
     summaryEl.style.display = 'block';
     summaryEl.innerHTML = `
       <div class="summary-line"><span>Subtotal</span><span>R${subtotal.toFixed(2)}</span></div>
-      <div class="summary-line"><span>Shipping</span><span>R${shipping.toFixed(2)}</span></div>
+      <div class="summary-line"><span>Courier delivery</span><span>R${shipping.toFixed(2)}</span></div>
       <div class="summary-line total"><span>Total</span><span>R${total.toFixed(2)}</span></div>
       <a href="checkout.html" class="btn" style="margin-top:1rem;display:inline-block">Proceed to Checkout</a>
     `;
@@ -576,8 +582,17 @@ function renderOrderSummary() {
   if (!box) return;
 
   const subtotal = cart.reduce((sum, i) => sum + i.price * i.qty, 0);
-  const shipping = shippingFee;
+  const method = document.querySelector('input[name="delivery_method"]:checked')?.value;
+  const shipping = method === 'paxi' ? paxiFee : method === 'express' ? expressFee : shippingFee;
   const total = subtotal + shipping;
+
+  document.getElementById('courier-price').textContent = `R${shippingFee.toFixed(2)}`;
+  document.getElementById('paxi-price').textContent = `R${paxiFee.toFixed(2)}`;
+  document.getElementById('express-option').hidden = expressFee === null;
+  if (expressFee !== null) {
+    document.getElementById('express-price').textContent = `R${expressFee.toFixed(2)}`;
+    document.getElementById('express-time').textContent = expressTime;
+  }
 
   box.innerHTML = `
     ${cart.map(i => `
@@ -585,7 +600,7 @@ function renderOrderSummary() {
         <span>${escapeHtml(i.name)} × ${i.qty}</span>
         <span>R${(i.price * i.qty).toFixed(2)}</span>
       </div>`).join('')}
-    <div class="summary-line"><span>Shipping</span><span>R${shipping.toFixed(2)}</span></div>
+    <div class="summary-line"><span>${{ paxi: 'PAXI delivery', express: 'Express delivery' }[method] || 'Courier delivery'}</span><span>R${shipping.toFixed(2)}</span></div>
     <div class="summary-line total"><span>Total</span><span>R${total.toFixed(2)}</span></div>
   `;
 

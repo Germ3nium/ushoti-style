@@ -132,10 +132,26 @@
         <form id="settings-form" class="admin-card admin-settings-card">
           <h3>Delivery</h3>
           <div class="form-group">
-            <label for="set-shipping">Delivery fee (R)</label>
+            <label for="set-shipping">Courier delivery fee (R)</label>
             <input type="number" id="set-shipping" min="0" max="10000" step="1" required/>
-            <p class="admin-muted admin-hint">Added once to every order. Enter 0 for free delivery.</p>
+            <p class="admin-muted admin-hint">Added once to orders delivered by courier. Enter 0 for free delivery.</p>
           </div>
+          <div class="form-group">
+            <label for="set-paxi">PAXI delivery fee (R)</label>
+            <input type="number" id="set-paxi" min="0" max="10000" step="1" required/>
+            <p class="admin-muted admin-hint">Added once to orders collected from a PAXI point.</p>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label for="set-express-fee">Express delivery fee (R)</label>
+              <input type="number" id="set-express-fee" min="1" max="10000" step="1"/>
+            </div>
+            <div class="form-group">
+              <label for="set-express-time">Express delivery time</label>
+              <input type="text" id="set-express-time" maxlength="60" placeholder="e.g. 3 to 5 business days"/>
+            </div>
+          </div>
+          <p class="admin-muted admin-hint">Express shows at checkout once both are filled in. Leave the fee blank to turn it off.</p>
 
           <h3>Home page banner</h3>
           <div class="form-group">

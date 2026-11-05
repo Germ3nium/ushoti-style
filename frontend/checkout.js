@@ -3,6 +3,27 @@ document.addEventListener('DOMContentLoaded', () => {
   if (cart.length === 0) window.location.href = 'products.html';
 });
 
+function deliveryMethod() {
+  return document.querySelector('input[name="delivery_method"]:checked').value;
+}
+
+// PAXI needs a collection point and phone number instead of a street address
+function syncDeliveryFields() {
+  const paxi = deliveryMethod() === 'paxi';
+  document.getElementById('paxi-fields').hidden = !paxi;
+  document.getElementById('address-fields').hidden = paxi;
+  document.getElementById('paxi_point').required = paxi;
+  document.getElementById('cell_number').required = paxi;
+  ['street', 'city', 'postal_code', 'province'].forEach(id => {
+    document.getElementById(id).required = !paxi;
+  });
+  renderOrderSummary();
+}
+
+document.querySelectorAll('input[name="delivery_method"]').forEach(radio => {
+  radio.addEventListener('change', syncDeliveryFields);
+});
+
 async function handleCheckout(e) {
   e.preventDefault();
   const btn = document.getElementById('pay-btn');
@@ -22,6 +43,8 @@ async function handleCheckout(e) {
         name_last:     field('name_last'),
         email_address: field('email_address'),
         cell_number:   field('cell_number'),
+        delivery_method: deliveryMethod(),
+        paxi_point:    field('paxi_point'),
         street:        field('street'),
         city:          field('city'),
         postal_code:   field('postal_code'),

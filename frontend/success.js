@@ -37,8 +37,8 @@ function renderReceipt(o) {
   $('r-total').textContent = formatRand(o.total);
 
   $('r-customer').innerHTML = `${escapeHtml(`${o.name_first} ${o.name_last}`)}<br>${escapeHtml(o.email)}`;
-  $('r-address').innerHTML = [o.street, o.city, `${o.province} ${o.postal_code}`]
-    .map(escapeHtml).join('<br>');
+  $('r-address').innerHTML = [o.street, o.city, `${o.province} ${o.postal_code}`.trim()]
+    .filter(Boolean).map(escapeHtml).join('<br>'); // PAXI orders only have a collection point
   $('r-payment-ref').textContent = o.payment_id ? `PayFast reference: ${o.payment_id}` : '';
 
   if (o.status === 'FAILED') {
@@ -48,7 +48,7 @@ function renderReceipt(o) {
   } else if (o.status === 'PENDING') {
     $('receipt-message').textContent = 'We are waiting for PayFast to confirm your payment. This page will update in a moment.';
   } else {
-    $('receipt-message').textContent = 'Your order will be dispatched within 1–2 business days. Keep this receipt for your records.';
+    $('receipt-message').textContent = 'Standard delivery takes about 2 weeks from payment. Express orders arrive sooner. Keep this receipt for your records.';
   }
 
   $('receipt').hidden = false;

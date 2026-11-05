@@ -26,6 +26,7 @@ const PF_HOST = PAYFAST_SANDBOX
 const EMAIL_FROM = 'Ushoti Style <orders@ushotistyle.co.za>';
 
 const DEFAULT_SHIPPING_FEE = 80; // used until the admin sets one
+const DEFAULT_PAXI_FEE = 150;
 const MAX_SHIPPING_FEE = 10000;
 const DEFAULT_BANNER = ['Premium Sneakers', 'Hair Extensions & Wigs', 'Secure PayFast Checkout', 'Nationwide Delivery', 'New Arrivals Weekly'];
 const MAX_BANNER_MESSAGES = 12;
@@ -196,19 +197,20 @@ async function getSettings(env) {
   const stored = Object.fromEntries(rows.map(r => [r.key, r.value]));
 
   const fee = Number(stored.shipping_fee);
+  const paxiFee = Number(stored.paxi_fee);
   const banner = safeJson(stored.banner, null);
   const stories = safeJson(stored.stories, null);
   const slides = safeJson(stored.slides, null);
   return {
     shipping_fee: stored.shipping_fee !== undefined && Number.isFinite(fee) ? fee : DEFAULT_SHIPPING_FEE,
+    paxi_fee: stored.paxi_fee !== undefined && Number.isFinite(paxiFee) ? paxiFee : DEFAULT_PAXI_FEE,
+    // Express shows at checkout only once the admin has set a fee and a time
+    express_fee: stored.express_fee ? Number(stored.express_fee) : null,
+    express_time: stored.express_time || '',
     banner: Array.isArray(banner) ? banner : DEFAULT_BANNER,
     stories: Array.isArray(stories) ? stories : DEFAULT_STORIES,
     slides: Array.isArray(slides) && slides.length ? slides : DEFAULT_SLIDES,
   };
-}
-
-async function getShippingFee(env) {
-  return (await getSettings(env)).shipping_fee;
 }
 
 async function handleGetSettings(env, cors) {
@@ -229,6 +231,26 @@ async function handleSaveSettings(request, env, cors) {
       return json({ error: `Delivery fee must be a whole number of rands from 0 to ${MAX_SHIPPING_FEE}` }, cors, 400);
     }
     updates.shipping_fee = String(fee);
+  }
+
+  if (body.paxi_fee !== undefined) {
+    const fee = Number(body.paxi_fee);
+    if (!(Number.isInteger(fee) && fee >= 0 && fee <= MAX_SHIPPING_FEE)) {
+      return json({ error: `PAXI fee must be a whole number of rands from 0 to ${MAX_SHIPPING_FEE}` }, cors, 400);
+    }
+    updates.paxi_fee = String(fee);
+  }
+
+  if (body.express_fee !== undefined || body.express_time !== undefined) {
+    const blank = body.express_fee === null || body.express_fee === '';
+    const fee = Number(body.express_fee);
+    const time = String(body.express_time || '').trim().slice(0, 60);
+    if (!blank && !(Number.isInteger(fee) && fee > 0 && fee <= MAX_SHIPPING_FEE)) {
+      return json({ error: `Express fee must be a whole number of rands from 1 to ${MAX_SHIPPING_FEE}, or blank to turn Express off` }, cors, 400);
+    }
+    if (!blank && !time) return json({ error: 'Add the Express delivery time, for example 3 to 5 business days' }, cors, 400);
+    updates.express_fee = blank ? '' : String(fee);
+    updates.express_time = blank ? '' : time;
   }
 
   if (body.banner !== undefined) {
@@ -329,7 +351,14 @@ function validateStories(list) {
 async function handleSignPayment(request, env, cors) {
   const body = await request.json();
 
-  const required = ['name_first', 'name_last', 'email_address', 'street', 'city', 'postal_code', 'province'];
+  const method = body.delivery_method || 'courier';
+  if (!['courier', 'express', 'paxi'].includes(method)) return json({ error: 'Please choose a delivery option' }, cors, 400);
+  const paxi = method === 'paxi';
+  const express = method === 'express';
+
+  const required = ['name_first', 'name_last', 'email_address', ...(paxi
+    ? ['paxi_point', 'cell_number']
+    : ['street', 'city', 'postal_code', 'province'])];
   for (const field of required) {
     if (!sanitize(body[field])) return json({ error: `Missing ${field}` }, cors, 400);
   }
@@ -338,7 +367,9 @@ async function handleSignPayment(request, env, cors) {
   if (items.error) return json({ error: items.error }, cors, 400);
 
   const subtotal = items.reduce((s, i) => s + i.price * i.qty, 0);
-  const shipping = await getShippingFee(env);
+  const settings = await getSettings(env);
+  if (express && settings.express_fee === null) return json({ error: 'Express delivery is not available right now' }, cors, 400);
+  const shipping = paxi ? settings.paxi_fee : express ? settings.express_fee : settings.shipping_fee;
   const total    = subtotal + shipping;
   const orderRef = crypto.randomUUID();
   const itemName = items.map(i => `${i.name} x${i.qty}`).join(', ');
@@ -353,8 +384,13 @@ async function handleSignPayment(request, env, cors) {
   `).bind(
     orderRef, JSON.stringify(items), itemName, subtotal, shipping, total,
     sanitize(body.name_first), sanitize(body.name_last), sanitize(body.email_address),
-    sanitize(body.cell_number), sanitize(body.street), sanitize(body.city),
-    sanitize(body.postal_code), sanitize(body.province), now, now
+    sanitize(body.cell_number),
+    // The delivery option goes in the address, so admin, receipts and emails all show it
+    paxi ? `PAXI: ${sanitize(body.paxi_point).slice(0, 120)}` : `${express ? 'EXPRESS: ' : ''}${sanitize(body.street)}`,
+    paxi ? '' : sanitize(body.city),
+    paxi ? '' : sanitize(body.postal_code),
+    paxi ? '' : sanitize(body.province),
+    now, now
   ).run();
 
   // Field order matters — PayFast signs them in this documented order
