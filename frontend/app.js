@@ -101,20 +101,44 @@ function sizedImage(url, w, h) {
     : url;
 }
 
-// was_price is only sent while a product is on sale
+// Hair can have its own price per length: [{ length, price, was_price }]
+function productVariants(p) {
+  return p.options?.variants || [];
+}
+
+function hasPriceRange(p) {
+  return new Set(productVariants(p).map(v => v.price)).size > 1;
+}
+
+function discountPercent(p) {
+  return p.was_price > p.price ? Math.round((1 - p.price / p.was_price) * 100) : 0;
+}
+
+// was_price is only sent while a product (or one of its lengths) is on sale
 function isOnSale(p) {
-  return p.was_price > p.price;
+  return discountPercent(p) > 0 || productVariants(p).some(v => discountPercent(v) > 0);
 }
 
 function priceHtml(p) {
-  return isOnSale(p)
+  const from = hasPriceRange(p) ? 'From ' : '';
+  return from + (discountPercent(p) > 0
     ? `<s class="was-price">${formatRand(p.was_price)}</s> <span class="sale-price">${formatRand(p.price)}</span>`
-    : formatRand(p.price);
+    : formatRand(p.price));
+}
+
+// Screen reader version of priceHtml
+function priceText(p) {
+  const sale = isOnSale(p) ? 'on sale, ' : '';
+  const was = discountPercent(p) > 0 ? `was ${formatRand(p.was_price)}, now ` : '';
+  return `${sale}${was}${hasPriceRange(p) ? 'from ' : ''}${formatRand(p.price)}`;
 }
 
 function tagsHtml(p) {
+  // Only name a percentage if it's true of every length
+  const percents = new Set((productVariants(p).length ? productVariants(p) : [p]).map(discountPercent));
+  const percent = percents.size === 1 ? [...percents][0] : 0;
   const sale = isOnSale(p)
-    ? `<span class="sale-tag">Sale &minus;${Math.round((1 - p.price / p.was_price) * 100)}%</span>`
+    ? `<span class="sale-tag">Sale${percent ? ` &minus;${percent}%` : ''}</span>`
     : '';
   const badge = p.badge
     ? `<span class="product-badge${sale ? ' product-badge-below' : ''}">${escapeHtml(p.badge)}</span>`
@@ -127,7 +151,7 @@ function productCardHtml(p, { featured = false } = {}) {
   const label = p.category === 'hair' ? 'Hair &amp; Wigs' : 'Footwear';
   const photos = productPhotos(p);
   return `
-    <div class="product-card" data-category="${p.category}" data-id="${escapeHtml(p.id)}" tabindex="0" role="button" aria-label="${name}, ${isOnSale(p) ? `on sale, was ${formatRand(p.was_price)}, now ` : ''}${formatRand(p.price)}${photos.length > 1 ? `, ${photos.length} photos` : ''}">
+    <div class="product-card" data-category="${p.category}" data-id="${escapeHtml(p.id)}" tabindex="0" role="button" aria-label="${name}, ${priceText(p)}${photos.length > 1 ? `, ${photos.length} photos` : ''}">
       <div class="product-card-img">
         <img src="${escapeHtml(sizedImage(p.image, 400, 260))}" alt="${name}" loading="lazy" onerror="${IMG_ONERROR}"/>
         ${photos.length > 1 ? `
@@ -301,6 +325,7 @@ function bindModalGallery(overlay, p) {
 function openHairModal(p) {
   const id = p.id;
   let selectedInch = null;
+  let selectedPrice = p.price;
 
   const overlay = document.createElement('div');
   overlay.className = 'modal-overlay';
@@ -340,6 +365,11 @@ function openHairModal(p) {
       overlay.querySelectorAll('.size-btn').forEach(b => b.classList.remove('selected'));
       btn.classList.add('selected');
       selectedInch = btn.dataset.inch;
+      const variant = productVariants(p).find(v => v.length === Number(selectedInch));
+      if (variant) {
+        selectedPrice = variant.price;
+        overlay.querySelector('.modal-price').innerHTML = priceHtml(variant);
+      }
       infoEl.textContent = `${selectedInch}" selected`;
       addBtn.disabled = false;
     });
@@ -350,7 +380,7 @@ function openHairModal(p) {
     const itemName = `${p.name} (${selectedInch}")`;
     const thumbUrl = sizedImage(p.image, 80, 80);
     closeModal(overlay);
-    setTimeout(() => addToCart(itemId, itemName, p.price, thumbUrl), 320);
+    setTimeout(() => addToCart(itemId, itemName, selectedPrice, thumbUrl), 320);
   });
 
   overlay.querySelector('.modal-close').addEventListener('click', () => closeModal(overlay));
@@ -497,6 +527,29 @@ function addToCart(id, name, price, image) {
   showToast(`${name} added to cart!`);
 }
 
+// A saved cart can hold old prices; show what the backend will actually charge
+function syncCartPrices() {
+  if (!cart.length) return;
+  loadProducts().then(() => {
+    let changed = false;
+    cart.forEach(item => {
+      const [productId, option] = item.id.split('-');
+      const p = productsById[productId];
+      if (!p) return; // the backend reports unavailable products at checkout
+      const variant = productVariants(p).find(v => v.length === parseInt(option, 10));
+      const price = variant ? variant.price : p.price;
+      if (price !== item.price) {
+        item.price = price;
+        changed = true;
+      }
+    });
+    if (!changed) return;
+    saveCart();
+    renderCart();
+    renderOrderSummary();
+  }).catch(() => { /* the backend still charges the right price */ });
+}
+
 // ── Toast ────────────────────────────────────────────────────
 function showToast(msg) {
   let toast = document.getElementById('toast');
@@ -625,6 +678,7 @@ document.addEventListener('DOMContentLoaded', () => {
       .then(settings => { renderCart(); renderOrderSummary(); renderBanner(settings.banner || []); })
       .catch(() => { /* keep the defaults written into the page */ });
   }
+  if (document.getElementById('cart-summary') || document.getElementById('order-summary')) syncCartPrices();
   renderCategoryGrids();
   syncPromoProducts();
 });

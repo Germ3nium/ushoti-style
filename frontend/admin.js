@@ -527,12 +527,10 @@ function renderProducts() {
       <td>
         <strong>${escapeHtml(p.name)}</strong>
         ${p.badge ? `<span class="admin-pill">${escapeHtml(p.badge)}</span>` : ''}
-        ${p.sale_price && p.sale_price < p.price ? '<span class="admin-pill admin-pill-sale">Sale</span>' : ''}
+        ${adminOnSale(p) ? '<span class="admin-pill admin-pill-sale">Sale</span>' : ''}
       </td>
       <td>${CATEGORY_NAMES[p.category] || p.category}</td>
-      <td class="num">${p.sale_price && p.sale_price < p.price
-        ? `<s class="admin-was">${formatRand(p.price)}</s> ${formatRand(p.sale_price)}`
-        : formatRand(p.price)}</td>
+      <td class="num">${adminPriceHtml(p)}</td>
       <td>
         <label class="admin-switch">
           <input type="checkbox" data-toggle="${escapeHtml(p.id)}" ${p.active ? 'checked' : ''} aria-label="Show ${escapeHtml(p.name)} in shop"/>
@@ -544,6 +542,22 @@ function renderProducts() {
         <button class="btn btn-ghost admin-btn-sm admin-danger" data-delete="${escapeHtml(p.id)}">Delete</button>
       </td>
     </tr>`).join('');
+}
+
+function adminOnSale(p) {
+  return p.sale_price && p.sale_price < p.price || (p.options.variants || []).some(v => v.sale_price);
+}
+
+function adminPriceHtml(p) {
+  const variants = p.options.variants || [];
+  if (variants.length) {
+    const prices = variants.map(v => v.sale_price || v.price);
+    const lowest = formatRand(Math.min(...prices));
+    return new Set(prices).size > 1 ? `From ${lowest}` : lowest;
+  }
+  return p.sale_price && p.sale_price < p.price
+    ? `<s class="admin-was">${formatRand(p.price)}</s> ${formatRand(p.sale_price)}`
+    : formatRand(p.price);
 }
 
 document.getElementById('product-category-filter').addEventListener('change', renderProducts);
@@ -605,6 +619,29 @@ function addColourRow(name = '', hex = '#000000') {
   $('pf-colours').appendChild(row);
 }
 
+function addLengthRow(length = '', price = '', salePrice = '') {
+  const row = document.createElement('div');
+  row.className = 'admin-length-row';
+  row.innerHTML = `
+    <input type="number" min="1" max="60" step="1" value="${escapeHtml(length)}" placeholder="14" aria-label="Length in inches" data-length/>
+    <input type="number" min="1" step="1" value="${escapeHtml(price)}" placeholder="1850" aria-label="Price in rands" data-price/>
+    <input type="number" min="1" step="1" value="${escapeHtml(salePrice)}" placeholder="Optional" aria-label="Sale price in rands" data-sale/>
+    <button type="button" class="admin-icon-btn" aria-label="Remove length">&times;</button>`;
+  row.querySelector('button').addEventListener('click', () => row.remove());
+  $('pf-length-rows').appendChild(row);
+  return row;
+}
+
+function readLengthRows() {
+  return [...$('pf-length-rows').querySelectorAll('.admin-length-row')]
+    .map(row => ({
+      length: row.querySelector('[data-length]').value.trim(),
+      price: row.querySelector('[data-price]').value.trim(),
+      sale_price: row.querySelector('[data-sale]').value.trim()
+    }))
+    .filter(r => r.length || r.price || r.sale_price); // ignore rows left empty
+}
+
 const CATEGORY_NAMES = { sneakers: 'Sneakers', kids: 'Kids Sneakers', hair: 'Hair' };
 const ADULT_SIZES = [4, 5, 6, 7, 8, 9, 10, 11, 12, 13];
 
@@ -617,6 +654,11 @@ function syncCategoryFields() {
   const hair = $('pf-category').value === 'hair';
   $('pf-sneaker-fields').hidden = hair;
   $('pf-hair-fields').hidden = !hair;
+  // Hair is priced per length, so the single price fields don't apply
+  $('pf-price-group').hidden = hair;
+  $('pf-sale-group').hidden = hair;
+  $('pf-price').required = !hair;
+  if (hair && !$('pf-length-rows').children.length) addLengthRow();
 }
 
 const MAX_PHOTOS = 10;
@@ -699,6 +741,7 @@ function openProductEditor(p = null) {
   $('product-error').textContent = '';
   $('pf-upload-status').textContent = '';
   $('pf-colours').innerHTML = '';
+  $('pf-length-rows').innerHTML = '';
   $('product-dialog-title').textContent = p ? `Edit ${p.name}` : 'Add product';
 
   const opts = p ? p.options : {};
@@ -714,7 +757,9 @@ function openProductEditor(p = null) {
   photos = p ? [...(p.images || [p.image])] : [];
   $('pf-active').checked    = p ? !!p.active : true;
   $('pf-sizes').value       = (opts.sizes || (p ? [] : ADULT_SIZES)).join(', ');
-  $('pf-lengths').value     = (opts.lengths || []).join(', ');
+  // Products from before per-length pricing start with their one price on every length
+  (opts.variants || (opts.lengths || []).map(length => ({ length, price: p.price, sale_price: p.sale_price })))
+    .forEach(v => addLengthRow(v.length, v.price, v.sale_price ?? ''));
   (opts.colours || []).forEach(c => addColourRow(c.name, c.hex));
   if (!p) addColourRow();
 
@@ -727,6 +772,7 @@ function openProductEditor(p = null) {
 
 $('add-product-btn').addEventListener('click', () => openProductEditor());
 $('add-colour-btn').addEventListener('click', () => addColourRow());
+$('add-length-btn').addEventListener('click', () => addLengthRow().querySelector('input').focus());
 $('pf-category').addEventListener('change', () => {
   syncCategoryFields();
   // New kids products start blank: the adult sizes don't apply to them
@@ -792,7 +838,7 @@ form.addEventListener('submit', async e => {
             name: row.querySelector('input[type=text]').value.trim()
           }))
         }
-      : { lengths: $('pf-lengths').value }
+      : { variants: readLengthRows() }
   };
 
   saveBtn.disabled = true;

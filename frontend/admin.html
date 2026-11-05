@@ -190,7 +190,7 @@
             <option value="hair">Hair</option>
           </select>
         </div>
-        <div class="form-group">
+        <div class="form-group" id="pf-price-group">
           <label for="pf-price">Price (R)</label>
           <input type="number" id="pf-price" min="1" step="1" required/>
         </div>
@@ -201,7 +201,7 @@
         <input type="text" id="pf-name" maxlength="80" required/>
       </div>
 
-      <div class="form-group">
+      <div class="form-group" id="pf-sale-group">
         <label for="pf-sale-price">Sale price (R) &mdash; leave blank if not on sale</label>
         <input type="number" id="pf-sale-price" min="1" step="1" placeholder="e.g. 999"/>
         <p class="admin-muted admin-hint">Sale items show the old price crossed out and appear on the On Sale page.</p>
@@ -251,8 +251,13 @@
 
       <div id="pf-hair-fields" hidden>
         <div class="form-group">
-          <label for="pf-lengths">Lengths in inches (comma separated)</label>
-          <input type="text" id="pf-lengths" placeholder="10, 12, 14, 16, 18"/>
+          <label>Lengths and prices</label>
+          <div class="admin-length-head" aria-hidden="true">
+            <span>Inches</span><span>Price (R)</span><span>Sale price (R)</span><span></span>
+          </div>
+          <div id="pf-length-rows" class="admin-colours"></div>
+          <button type="button" class="btn btn-ghost admin-btn-sm" id="add-length-btn">+ Add length</button>
+          <p class="admin-muted admin-hint">Leave the sale price blank if that length isn't on sale. Any length on sale puts the product on the On Sale page.</p>
         </div>
       </div>
 

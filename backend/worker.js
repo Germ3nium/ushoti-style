@@ -99,6 +99,8 @@ const FULFILMENT   = ['NEW', 'PROCESSING', 'SHIPPED', 'DELIVERED', 'CANCELLED'];
 const IMAGE_TYPES  = ['image/jpeg', 'image/png', 'image/webp'];
 const MAX_IMAGE_BYTES = 1500000; // D1 rows top out at 2 MB
 const MAX_PHOTOS   = 10;
+const MAX_LENGTHS  = 20;
+const MAX_LENGTH_INCHES = 60;
 
 export default {
   async fetch(request, env, ctx) {
@@ -176,16 +178,33 @@ async function handleGetProducts(env, cors) {
     'SELECT id, category, name, price, sale_price, badge, description, image, images, options FROM products WHERE active = 1 ORDER BY category, sort_order, created_at'
   ).all();
 
-  // Shoppers see the price they pay; was_price is set only while on sale
-  const shop = results.map(parseProduct).map(p => {
-    const { sale_price, ...rest } = p;
-    return onSale(p) ? { ...rest, price: sale_price, was_price: p.price } : rest;
-  });
+  const shop = results.map(parseProduct).map(shopProduct);
 
   return json(shop, {
     ...cors,
     'Cache-Control': 'no-cache' // admin changes show on the next page load
   });
+}
+
+// Shoppers see the price they pay; was_price is set only while on sale.
+// Hair priced per length shows its cheapest length as the product's price.
+function shopProduct(p) {
+  const { sale_price, ...rest } = p;
+  const variants = p.options.variants;
+  if (!variants?.length) {
+    return onSale(p) ? { ...rest, price: sale_price, was_price: p.price } : rest;
+  }
+  const shopVariants = variants.map(v => {
+    const price = variantPrice(v);
+    return { length: v.length, price, ...(price < v.price ? { was_price: v.price } : {}) };
+  });
+  const cheapest = shopVariants.reduce((a, b) => (b.price < a.price ? b : a));
+  return {
+    ...rest,
+    price: cheapest.price,
+    ...(cheapest.was_price ? { was_price: cheapest.was_price } : {}),
+    options: { ...p.options, variants: shopVariants },
+  };
 }
 
 // ── Settings ─────────────────────────────────────────────────
@@ -463,6 +482,7 @@ async function priceCartItems(cartItems, env) {
     if (!p) return { error: 'A product in your cart is no longer available' };
 
     let option;
+    let price = onSale(p) ? p.sale_price : p.price;
     if (p.category !== 'hair') { // sneakers and kids sneakers
       const size   = Number(rest[0]);
       const colour = (p.options.colours || []).find(c => c.hex.toLowerCase() === rest.slice(1).join('-').toLowerCase());
@@ -472,9 +492,11 @@ async function priceCartItems(cartItems, env) {
       const length = parseInt(rest[0], 10);
       if (!(p.options.lengths || []).includes(length)) return { error: `Please re-select options for ${p.name}` };
       option = `${length}"`;
+      const variant = (p.options.variants || []).find(v => v.length === length);
+      if (variant) price = variantPrice(variant);
     }
 
-    priced.push({ product_id: p.id, name: p.name, option, price: onSale(p) ? p.sale_price : p.price, qty });
+    priced.push({ product_id: p.id, name: p.name, option, price, qty });
   }
   return priced;
 }
@@ -672,12 +694,18 @@ function validateProduct(body) {
   const name = String(body.name || '').trim();
   if (!name) return { error: 'Name is required' };
 
-  const price = Math.round(Number(body.price));
+  // Hair priced per length keeps its prices in options.variants;
+  // the product's own price is just its cheapest length
+  const opts = body.options || {};
+  const variants = category === 'hair' && Array.isArray(opts.variants) ? validateVariants(opts.variants) : null;
+  if (variants?.error) return variants;
+
+  const price = variants ? Math.min(...variants.map(v => v.price)) : Math.round(Number(body.price));
   if (!(price > 0)) return { error: 'Price must be more than 0' };
 
   // Blank sale price = not on sale
   let sale_price = null;
-  if (body.sale_price !== null && body.sale_price !== undefined && String(body.sale_price).trim() !== '') {
+  if (!variants && body.sale_price !== null && body.sale_price !== undefined && String(body.sale_price).trim() !== '') {
     sale_price = Math.round(Number(body.sale_price));
     if (!(sale_price > 0)) return { error: 'Sale price must be more than 0' };
     if (sale_price >= price) return { error: 'Sale price must be lower than the normal price' };
@@ -691,7 +719,6 @@ function validateProduct(body) {
   if (!images.every(isImageUrl)) return { error: 'Photo links must start with https://' };
   const image = images[0];
 
-  const opts = body.options || {};
   let options;
   if (category !== 'hair') { // sneakers and kids sneakers
     // Kids sizes run 10-13 then start again at 1, so keep the order the admin typed
@@ -702,6 +729,8 @@ function validateProduct(body) {
     if (!sizes.length)   return { error: 'Add at least one size' };
     if (!colours.length) return { error: 'Add at least one colour' };
     options = { sizes, colours };
+  } else if (variants) {
+    options = { lengths: variants.map(v => v.length), variants };
   } else {
     const lengths = toNumberList(opts.lengths);
     if (!lengths.length) return { error: 'Add at least one length' };
@@ -715,6 +744,32 @@ function validateProduct(body) {
     active:      body.active === false || body.active === 0 ? 0 : 1,
     sort_order:  parseInt(body.sort_order, 10) || 0,
   };
+}
+
+function validateVariants(list) {
+  if (!list.length) return { error: 'Add at least one length' };
+  if (list.length > MAX_LENGTHS) return { error: `Add at most ${MAX_LENGTHS} lengths` };
+  const seen = new Set();
+  const variants = [];
+  for (const raw of list) {
+    const length = Number(raw.length);
+    if (!(Number.isInteger(length) && length > 0 && length <= MAX_LENGTH_INCHES)) {
+      return { error: `Each length must be a whole number of inches from 1 to ${MAX_LENGTH_INCHES}` };
+    }
+    if (seen.has(length)) return { error: `${length}" is listed twice` };
+    seen.add(length);
+
+    const price = Math.round(Number(raw.price));
+    if (!(price > 0)) return { error: `Add a price for ${length}"` };
+
+    const blankSale = raw.sale_price === null || raw.sale_price === undefined || String(raw.sale_price).trim() === '';
+    const sale_price = blankSale ? null : Math.round(Number(raw.sale_price));
+    if (!blankSale && !(sale_price > 0)) return { error: `The sale price for ${length}" must be more than 0` };
+    if (!blankSale && sale_price >= price) return { error: `The sale price for ${length}" must be lower than its normal price` };
+
+    variants.push({ length, price, sale_price });
+  }
+  return variants.sort((a, b) => a.length - b.length);
 }
 
 // ── Helpers ──────────────────────────────────────────────────
@@ -744,6 +799,10 @@ function isAdmin(request, env) {
 
 function onSale(p) {
   return p.sale_price > 0 && p.sale_price < p.price;
+}
+
+function variantPrice(v) {
+  return v.sale_price > 0 && v.sale_price < v.price ? v.sale_price : v.price;
 }
 
 function parseProduct(p) {

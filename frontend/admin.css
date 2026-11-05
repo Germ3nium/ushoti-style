@@ -389,6 +389,18 @@ td > .admin-pill:first-child,
 
 .admin-colour-row input[type=text] { flex: 1; }
 
+.admin-length-head,
+.admin-length-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr) minmax(0, 1.2fr) 36px;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.admin-length-head { font-size: 0.75rem; color: var(--text-muted); margin-bottom: 0.35rem; }
+
+.admin-length-row input { width: 100%; min-width: 0; }
+
 .admin-icon-btn {
   width: 36px; height: 36px;
   border: 1px solid var(--border);
