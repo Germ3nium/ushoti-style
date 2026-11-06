@@ -34,7 +34,7 @@ async function api(path, options = {}) {
     }
   });
   if (res.status === 401) {
-    signOut('Your admin key was not accepted. Please sign in again.');
+    signOut('Your sign-in has ended. Please sign in again.');
     throw new Error('Unauthorized');
   }
   const data = await res.json().catch(() => ({}));
@@ -62,14 +62,29 @@ document.getElementById('login-form').addEventListener('submit', async e => {
   errorEl.textContent = '';
   btn.disabled = true;
 
-  adminKey = document.getElementById('admin-key').value.trim();
   try {
-    await loadOverview();
+    const res = await fetch(`${API_BASE}/api/admin/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ pin: document.getElementById('admin-key').value.trim() })
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      errorEl.textContent = data.error || `Couldn't sign in (${res.status})`;
+      return;
+    }
+    adminKey = data.token;
     storeKey(adminKey);
     document.getElementById('admin-key').value = '';
     showView(true);
+    if (data.pin_set) {
+      switchTab('overview');
+    } else {
+      switchTab('settings');
+      showToast('Set a PIN so you can sign in with it next time');
+    }
   } catch (err) {
-    if (err.message !== 'Unauthorized') errorEl.textContent = `Couldn't reach the server: ${err.message}`;
+    errorEl.textContent = `Couldn't reach the server: ${err.message}`;
   } finally {
     btn.disabled = false;
   }
@@ -107,7 +122,48 @@ async function loadSettings() {
 
   renderSlideEditors(settings.slides || []);
   renderStoryEditors(settings.stories || []);
+  await loadPinStatus();
 }
+
+// ── Sign-in PIN ──
+let pinSet = false;
+
+async function loadPinStatus() {
+  ({ pin_set: pinSet } = await api('pin'));
+  // Signed in with the admin key, a forgotten PIN can be replaced without the old one
+  const viaKey = !adminKey.startsWith('pin.');
+  document.getElementById('pin-current-group').hidden = !pinSet || viaKey;
+  document.getElementById('pin-status').textContent = !pinSet
+    ? 'No PIN is set yet. Choose one so you can sign in with it instead of the admin key.'
+    : viaKey ? 'You signed in with the admin key, so you can set a new PIN without the old one.'
+    : 'Change the PIN you use to sign in.';
+}
+
+document.getElementById('pin-form').addEventListener('submit', async e => {
+  e.preventDefault();
+  const btn = e.submitter;
+  const errorEl = document.getElementById('pin-error');
+  const newPin = document.getElementById('pin-new').value.trim();
+  errorEl.textContent = '';
+  if (!/^\d{6,12}$/.test(newPin)) return void (errorEl.textContent = 'The new PIN must be 6 to 12 digits');
+  if (newPin !== document.getElementById('pin-confirm').value.trim()) return void (errorEl.textContent = 'The two new PINs don\'t match');
+  btn.disabled = true;
+  try {
+    const { token } = await api('pin', {
+      method: 'PUT',
+      body: JSON.stringify({ current_pin: document.getElementById('pin-current').value.trim(), new_pin: newPin })
+    });
+    adminKey = token;
+    storeKey(token);
+    e.target.reset();
+    await loadPinStatus();
+    showToast('PIN saved. Use it next time you sign in.');
+  } catch (err) {
+    if (err.message !== 'Unauthorized') errorEl.textContent = err.message;
+  } finally {
+    btn.disabled = false;
+  }
+});
 
 // ── Slideshow editors ──
 const MAX_SLIDES = 6;

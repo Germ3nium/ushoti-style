@@ -6,7 +6,10 @@
 //   GET    /api/orders/:ref           → receipt for one order (the ref is an unguessable UUID)
 //   POST   /api/sign-payment          → creates a PENDING order, returns signed PayFast fields
 //   POST   /api/notify                → PayFast payment notification (marks order PAID, emails the buyer)
-//   Admin (Authorization: Bearer ADMIN_KEY):
+//   POST   /api/admin/login           → swaps the admin PIN (or the admin key) for a session token
+//   Admin (Authorization: Bearer <session token or ADMIN_KEY>):
+//   GET    /api/admin/pin             → whether a PIN has been set
+//   PUT    /api/admin/pin             → set or change the PIN
 //   GET    /api/admin/summary         → sales totals and best sellers
 //   GET    /api/admin/orders          → orders (?status=PAID|PENDING|FAILED|ALL)
 //   PATCH  /api/admin/orders/:id      → update fulfilment status
@@ -101,6 +104,13 @@ const MAX_IMAGE_BYTES = 1500000; // D1 rows top out at 2 MB
 const MAX_PHOTOS   = 10;
 const MAX_LENGTHS  = 20;
 const MAX_LENGTH_INCHES = 60;
+// Admin sign-in. The PIN is stored hashed in the settings table; the ADMIN_KEY
+// secret always works too, so a forgotten PIN or a lockout can be undone.
+const PIN_PATTERN = /^\d{6,12}$/;
+const PIN_ITERATIONS = 100000; // the most PBKDF2 rounds Workers allows
+const MAX_PIN_FAILURES = 5;
+const PIN_LOCK_MINUTES = 15;
+const SESSION_HOURS = 12;
 
 export default {
   async fetch(request, env, ctx) {
@@ -146,8 +156,13 @@ export default {
       }
 
       // ── Admin routes ───────────────────────────────────────
+      if (pathname === '/api/admin/login' && method === 'POST') {
+        return await handleAdminLogin(request, env, cors);
+      }
+
       if (pathname.startsWith('/api/admin/')) {
-        if (!isAdmin(request, env)) {
+        const auth = await adminAuth(request, env);
+        if (!auth) {
           return json({ error: 'Unauthorized' }, cors, 401);
         }
 
@@ -162,6 +177,8 @@ export default {
         if (resource === 'products' && id && method === 'DELETE')   return await handleDeleteProduct(id, env, cors);
         if (resource === 'images' && !id && method === 'POST')      return await handleUploadImage(request, url, env, cors);
         if (resource === 'settings' && !id && method === 'PUT')     return await handleSaveSettings(request, env, cors);
+        if (resource === 'pin' && !id && method === 'GET')          return await handlePinStatus(env, cors);
+        if (resource === 'pin' && !id && method === 'PUT')          return await handleChangePin(auth, request, env, cors);
       }
 
       return new Response('Not Found', { status: 404, headers: cors });
@@ -296,6 +313,11 @@ async function handleSaveSettings(request, env, cors) {
     updates.stories = JSON.stringify(stories);
   }
 
+  await saveSettingRows(env, updates);
+  return json(await getSettings(env), cors);
+}
+
+async function saveSettingRows(env, updates) {
   const now = new Date().toISOString();
   const save = env.DB.prepare(`
     INSERT INTO settings (key, value, updated_at) VALUES (?, ?, ?)
@@ -303,8 +325,114 @@ async function handleSaveSettings(request, env, cors) {
   `);
   const writes = Object.entries(updates).map(([key, value]) => save.bind(key, value, now));
   if (writes.length) await env.DB.batch(writes);
+}
 
-  return json(await getSettings(env), cors);
+// ── Admin sign-in ────────────────────────────────────────────
+// These rows are never sent to shoppers: getSettings only returns the shop settings.
+async function readPinState(env) {
+  const { results } = await env.DB.prepare(
+    "SELECT key, value FROM settings WHERE key IN ('admin_pin', 'pin_failures', 'pin_locked_until')"
+  ).all();
+  return Object.fromEntries(results.map(r => [r.key, r.value]));
+}
+
+async function handleAdminLogin(request, env, cors) {
+  if (!env.ADMIN_KEY) return json({ error: 'Admin sign-in is not set up' }, cors, 503);
+  const body = await request.json().catch(() => ({}));
+  const given = String(body.pin || '').trim();
+  if (!given) return json({ error: 'Enter your PIN' }, cors, 400);
+
+  const state = await readPinState(env);
+  if (safeEqual(given, env.ADMIN_KEY)) {
+    return json({ token: await makeSession(env, 'key', state.admin_pin), pin_set: !!state.admin_pin }, cors);
+  }
+  if (!state.admin_pin) {
+    return json({ error: 'No PIN has been set yet. Sign in with the admin key, then set a PIN in Settings.' }, cors, 401);
+  }
+
+  const now = Date.now();
+  const lockedUntil = Number(state.pin_locked_until) || 0;
+  if (lockedUntil > now) {
+    const minutes = Math.ceil((lockedUntil - now) / 60000);
+    return json({ error: `Too many wrong PINs. Try again in ${minutes} minute${minutes === 1 ? '' : 's'}.` }, cors, 429);
+  }
+
+  if (await verifyPin(given, state.admin_pin)) {
+    if (state.pin_failures && state.pin_failures !== '0') await saveSettingRows(env, { pin_failures: '0' });
+    return json({ token: await makeSession(env, 'pin', state.admin_pin), pin_set: true }, cors);
+  }
+
+  const failures = (Number(state.pin_failures) || 0) + 1;
+  if (failures >= MAX_PIN_FAILURES) {
+    await saveSettingRows(env, { pin_failures: '0', pin_locked_until: String(now + PIN_LOCK_MINUTES * 60000) });
+    return json({ error: `Too many wrong PINs. Sign-in is locked for ${PIN_LOCK_MINUTES} minutes.` }, cors, 429);
+  }
+  await saveSettingRows(env, { pin_failures: String(failures) });
+  const left = MAX_PIN_FAILURES - failures;
+  return json({ error: `Wrong PIN. ${left} more tr${left === 1 ? 'y' : 'ies'} before sign-in locks for ${PIN_LOCK_MINUTES} minutes.` }, cors, 401);
+}
+
+async function handlePinStatus(env, cors) {
+  const state = await readPinState(env);
+  return json({ pin_set: !!state.admin_pin }, cors);
+}
+
+// Changing the PIN signs out every other session, so the caller gets a fresh token
+async function handleChangePin(auth, request, env, cors) {
+  const body = await request.json().catch(() => ({}));
+  const newPin = String(body.new_pin || '').trim();
+  if (!PIN_PATTERN.test(newPin)) return json({ error: 'The new PIN must be 6 to 12 digits' }, cors, 400);
+
+  const state = await readPinState(env);
+  // Someone signed in with the admin key can reset a forgotten PIN
+  if (state.admin_pin && auth !== 'key' && !(await verifyPin(String(body.current_pin || '').trim(), state.admin_pin))) {
+    return json({ error: 'Your current PIN is wrong' }, cors, 400);
+  }
+
+  const hash = await hashPin(newPin);
+  await saveSettingRows(env, { admin_pin: hash, pin_failures: '0', pin_locked_until: '0' });
+  return json({ token: await makeSession(env, auth, hash), pin_set: true }, cors);
+}
+
+// Tokens look like "pin.<expiry>.<signature>". The signature covers the stored PIN hash,
+// so changing the PIN (or the ADMIN_KEY secret) ends every session.
+async function makeSession(env, mode, pinHash) {
+  const exp = Date.now() + SESSION_HOURS * 3600000;
+  return `${mode}.${exp}.${await sessionSignature(env, mode, exp, pinHash)}`;
+}
+
+async function sessionSignature(env, mode, exp, pinHash) {
+  const enc = new TextEncoder();
+  const key = await crypto.subtle.importKey('raw', enc.encode(env.ADMIN_KEY), { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']);
+  const sig = await crypto.subtle.sign('HMAC', key, enc.encode(`${mode}.${exp}.${pinHash || ''}`));
+  return [...new Uint8Array(sig)].map(b => b.toString(16).padStart(2, '0')).join('');
+}
+
+// Returns how the request signed in ('key' or 'pin'), or null
+async function adminAuth(request, env) {
+  if (!env.ADMIN_KEY) return null;
+  const given = (request.headers.get('Authorization') || '').replace(/^Bearer /, '');
+  if (!given) return null;
+  if (safeEqual(given, env.ADMIN_KEY)) return 'key';
+
+  const [mode, exp, sig, extra] = given.split('.');
+  if (extra !== undefined || !['key', 'pin'].includes(mode) || !(Number(exp) > Date.now()) || !sig) return null;
+  const state = await readPinState(env);
+  return safeEqual(sig, await sessionSignature(env, mode, exp, state.admin_pin)) ? mode : null;
+}
+
+async function hashPin(pin, salt = crypto.getRandomValues(new Uint8Array(16)), iterations = PIN_ITERATIONS) {
+  const key = await crypto.subtle.importKey('raw', new TextEncoder().encode(pin), 'PBKDF2', false, ['deriveBits']);
+  const bits = await crypto.subtle.deriveBits({ name: 'PBKDF2', hash: 'SHA-256', salt, iterations }, key, 256);
+  const b64 = bytes => btoa(String.fromCharCode(...bytes));
+  return `pbkdf2$${iterations}$${b64(salt)}$${b64(new Uint8Array(bits))}`;
+}
+
+async function verifyPin(pin, stored) {
+  const [scheme, iterations, salt] = String(stored).split('$');
+  if (scheme !== 'pbkdf2' || !salt) return false;
+  const saltBytes = Uint8Array.from(atob(salt), c => c.charCodeAt(0));
+  return safeEqual(await hashPin(pin, saltBytes, Number(iterations)), stored);
 }
 
 function validateSlides(list) {
@@ -786,12 +914,11 @@ function isImageUrl(url) {
   return /^https:\/\//.test(url) || /^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?\//.test(url);
 }
 
-function isAdmin(request, env) {
-  if (!env.ADMIN_KEY) return false;
-  const expected = `Bearer ${env.ADMIN_KEY}`;
-  const given = request.headers.get('Authorization') || '';
+// Constant-time comparison so secrets can't be guessed from response timing
+function safeEqual(given, expected) {
+  given = String(given);
+  expected = String(expected);
   if (given.length !== expected.length) return false;
-  // Constant-time comparison so the key can't be guessed from response timing
   let diff = 0;
   for (let i = 0; i < given.length; i++) diff |= given.charCodeAt(i) ^ expected.charCodeAt(i);
   return diff === 0;

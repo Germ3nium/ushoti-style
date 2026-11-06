@@ -460,3 +460,6 @@ td > .admin-pill:first-child,
 .admin-story { position: relative; }
 .admin-slide-tools { position: absolute; top: 0.6rem; right: 0.8rem; display: flex; gap: 0.4rem; }
 .admin-add-slide { margin: -0.6rem 0 1.75rem; }
+
+.admin-pin-card { margin-top: 1.5rem; }
+#pin-status { margin-bottom: 1rem; }

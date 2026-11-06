@@ -15,10 +15,11 @@
     <form id="login-form" class="admin-card admin-login-card">
       <a href="index.html" class="logo">Ushoti Style</a>
       <h1>Admin</h1>
-      <p class="admin-muted">Enter your admin key to manage orders and products.</p>
+      <p class="admin-muted">Enter your PIN to manage orders and products.</p>
       <div class="form-group">
-        <label for="admin-key">Admin key</label>
+        <label for="admin-key">PIN</label>
         <input type="password" id="admin-key" autocomplete="current-password" required/>
+        <p class="admin-muted admin-hint">Forgot your PIN? Enter the admin key here instead, then set a new PIN in Settings.</p>
       </div>
       <p id="login-error" class="admin-error" role="alert"></p>
       <button type="submit" class="btn" style="width:100%">Sign in</button>
@@ -170,6 +171,28 @@
           <div id="set-stories" class="admin-stories"></div>
           <p id="settings-error" class="admin-error" role="alert"></p>
           <button type="submit" class="btn admin-btn-sm">Save</button>
+        </form>
+
+        <form id="pin-form" class="admin-card admin-settings-card admin-pin-card">
+          <h3>Sign-in PIN</h3>
+          <p class="admin-muted admin-hint" id="pin-status"></p>
+          <div class="form-group" id="pin-current-group">
+            <label for="pin-current">Current PIN</label>
+            <input type="password" id="pin-current" inputmode="numeric" autocomplete="current-password"/>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label for="pin-new">New PIN</label>
+              <input type="password" id="pin-new" inputmode="numeric" pattern="[0-9]{6,12}" minlength="6" maxlength="12" autocomplete="new-password" required/>
+            </div>
+            <div class="form-group">
+              <label for="pin-confirm">Type the new PIN again</label>
+              <input type="password" id="pin-confirm" inputmode="numeric" maxlength="12" autocomplete="new-password" required/>
+            </div>
+          </div>
+          <p class="admin-muted admin-hint">6 to 12 digits. Changing the PIN signs out anyone else who is signed in.</p>
+          <p id="pin-error" class="admin-error" role="alert"></p>
+          <button type="submit" class="btn admin-btn-sm">Save PIN</button>
         </form>
       </section>
 
