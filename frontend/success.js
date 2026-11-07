@@ -33,6 +33,9 @@ function renderReceipt(o) {
       <td class="num">${formatRand(i.price * i.qty)}</td>
     </tr>`).join('');
   $('r-subtotal').textContent = formatRand(o.subtotal);
+  const discount = Math.round(o.subtotal + o.shipping - o.total); // orders keep no separate discount
+  $('r-discount-row').hidden = !(discount > 0);
+  $('r-discount').textContent = `−${formatRand(discount)}`;
   $('r-shipping').textContent = formatRand(o.shipping);
   $('r-total').textContent = formatRand(o.total);
 

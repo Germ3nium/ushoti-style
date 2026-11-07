@@ -119,6 +119,8 @@ async function loadSettings() {
   document.getElementById('set-express-fee').value = settings.express_fee ?? '';
   document.getElementById('set-express-time').value = settings.express_time || '';
   document.getElementById('set-banner').value = (settings.banner || []).join('\n');
+  document.getElementById('set-combo-qty').value = settings.combo_qty ?? 2;
+  document.getElementById('set-combo-price').value = settings.combo_price ?? '';
 
   renderSlideEditors(settings.slides || []);
   renderStoryEditors(settings.stories || []);
@@ -388,6 +390,8 @@ document.getElementById('settings-form').addEventListener('submit', async e => {
         paxi_fee: Number(document.getElementById('set-paxi').value),
         express_fee: document.getElementById('set-express-fee').value,
         express_time: document.getElementById('set-express-time').value,
+        combo_qty: Number(document.getElementById('set-combo-qty').value),
+        combo_price: document.getElementById('set-combo-price').value,
         banner: document.getElementById('set-banner').value.split('\n').map(m => m.trim()).filter(Boolean),
         slides: readSlideEditors(),
         stories: readStoryEditors()
@@ -491,6 +495,8 @@ function orderDetailHtml(o) {
   const lines = o.items.length
     ? o.items.map(i => `
         <li><span>${escapeHtml(i.name)} — ${escapeHtml(i.option)} × ${i.qty}</span><span>${formatRand(i.price * i.qty)}</span></li>`).join('')
+      + (o.subtotal + o.shipping - o.total > 0
+        ? `<li class="admin-muted"><span>Combo deal</span><span>−${formatRand(o.subtotal + o.shipping - o.total)}</span></li>` : '')
       + `<li class="admin-muted"><span>Shipping</span><span>${formatRand(o.shipping)}</span></li>`
     : `<li><span>${escapeHtml(o.item_name)}</span></li>`;
 
@@ -584,6 +590,7 @@ function renderProducts() {
         <strong>${escapeHtml(p.name)}</strong>
         ${p.badge ? `<span class="admin-pill">${escapeHtml(p.badge)}</span>` : ''}
         ${adminOnSale(p) ? '<span class="admin-pill admin-pill-sale">Sale</span>' : ''}
+        ${p.options.combo ? '<span class="admin-pill">Combo</span>' : ''}
       </td>
       <td>${CATEGORY_NAMES[p.category] || p.category}</td>
       <td class="num">${adminPriceHtml(p)}</td>
@@ -812,6 +819,7 @@ function openProductEditor(p = null) {
   $('pf-image-link').value  = '';
   photos = p ? [...(p.images || [p.image])] : [];
   $('pf-active').checked    = p ? !!p.active : true;
+  $('pf-combo').checked     = !!opts.combo;
   $('pf-sizes').value       = (opts.sizes || (p ? [] : ADULT_SIZES)).join(', ');
   // Products from before per-length pricing start with their one price on every length
   (opts.variants || (opts.lengths || []).map(length => ({ length, price: p.price, sale_price: p.sale_price })))
@@ -889,6 +897,7 @@ form.addEventListener('submit', async e => {
     options: category !== 'hair'
       ? {
           sizes: $('pf-sizes').value,
+          combo: $('pf-combo').checked,
           colours: [...$('pf-colours').querySelectorAll('.admin-colour-row')].map(row => ({
             hex:  row.querySelector('input[type=color]').value,
             name: row.querySelector('input[type=text]').value.trim()

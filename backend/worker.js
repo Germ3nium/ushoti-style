@@ -31,6 +31,9 @@ const EMAIL_FROM = 'Ushoti Style <orders@ushotistyle.co.za>';
 const DEFAULT_SHIPPING_FEE = 80; // used until the admin sets one
 const DEFAULT_PAXI_FEE = 150;
 const MAX_SHIPPING_FEE = 10000;
+// Combo deal: any COMBO_QTY sneakers marked combo-eligible for one set price
+const DEFAULT_COMBO_QTY = 2;
+const MAX_COMBO_QTY = 10;
 const DEFAULT_BANNER = ['Premium Sneakers', 'Hair Extensions & Wigs', 'Secure PayFast Checkout', 'Nationwide Delivery', 'New Arrivals Weekly'];
 const MAX_BANNER_MESSAGES = 12;
 const MAX_BANNER_LENGTH = 80;
@@ -243,6 +246,9 @@ async function getSettings(env) {
     // Express shows at checkout only once the admin has set a fee and a time
     express_fee: stored.express_fee ? Number(stored.express_fee) : null,
     express_time: stored.express_time || '',
+    // The combo deal is off until the admin sets a price
+    combo_price: stored.combo_price ? Number(stored.combo_price) : null,
+    combo_qty: Number(stored.combo_qty) || DEFAULT_COMBO_QTY,
     banner: Array.isArray(banner) ? banner : DEFAULT_BANNER,
     stories: Array.isArray(stories) ? stories : DEFAULT_STORIES,
     slides: Array.isArray(slides) && slides.length ? slides : DEFAULT_SLIDES,
@@ -287,6 +293,20 @@ async function handleSaveSettings(request, env, cors) {
     if (!blank && !time) return json({ error: 'Add the Express delivery time, for example 3 to 5 business days' }, cors, 400);
     updates.express_fee = blank ? '' : String(fee);
     updates.express_time = blank ? '' : time;
+  }
+
+  if (body.combo_price !== undefined || body.combo_qty !== undefined) {
+    const blank = body.combo_price === null || body.combo_price === '';
+    const price = Number(body.combo_price);
+    const qty = Number(body.combo_qty ?? DEFAULT_COMBO_QTY);
+    if (!(Number.isInteger(qty) && qty >= 2 && qty <= MAX_COMBO_QTY)) {
+      return json({ error: `The combo must be for 2 to ${MAX_COMBO_QTY} pairs` }, cors, 400);
+    }
+    if (!blank && !(Number.isInteger(price) && price > 0 && price <= 1000000)) {
+      return json({ error: 'The combo price must be a whole number of rands, or blank to turn the deal off' }, cors, 400);
+    }
+    updates.combo_price = blank ? '' : String(price);
+    updates.combo_qty = String(qty);
   }
 
   if (body.banner !== undefined) {
@@ -517,7 +537,9 @@ async function handleSignPayment(request, env, cors) {
   const settings = await getSettings(env);
   if (express && settings.express_fee === null) return json({ error: 'Express delivery is not available right now' }, cors, 400);
   const shipping = paxi ? settings.paxi_fee : express ? settings.express_fee : settings.shipping_fee;
-  const total    = subtotal + shipping;
+  // The order keeps subtotal and total, so the discount is always subtotal + shipping - total
+  const discount = comboDiscount(items, settings);
+  const total    = subtotal - discount + shipping;
   const orderRef = crypto.randomUUID();
   const itemName = items.map(i => `${i.name} x${i.qty}`).join(', ');
   const now      = new Date().toISOString();
@@ -624,9 +646,23 @@ async function priceCartItems(cartItems, env) {
       if (variant) price = variantPrice(variant);
     }
 
-    priced.push({ product_id: p.id, name: p.name, option, price, qty });
+    priced.push({ product_id: p.id, name: p.name, option, price, qty, ...(p.category !== 'hair' && p.options.combo ? { combo: true } : {}) });
   }
   return priced;
+}
+
+// Every full group of combo-eligible pairs costs the combo price instead of their
+// own prices. The dearest pairs are grouped first, so the buyer saves the most.
+// The same sum runs in the browser (app.js) to show the discount before paying.
+function comboDiscount(items, settings) {
+  if (!settings.combo_price) return 0;
+  const units = items.filter(i => i.combo).flatMap(i => Array(i.qty).fill(i.price)).sort((a, b) => b - a);
+  let discount = 0;
+  for (let i = 0; i + settings.combo_qty <= units.length; i += settings.combo_qty) {
+    const group = units.slice(i, i + settings.combo_qty).reduce((s, p) => s + p, 0);
+    discount += Math.max(0, group - settings.combo_price);
+  }
+  return discount;
 }
 
 // ── Handle PayFast ITN Notification ─────────────────────────
@@ -856,7 +892,7 @@ function validateProduct(body) {
       .filter(c => c.name && /^#[0-9a-f]{6}$/.test(c.hex));
     if (!sizes.length)   return { error: 'Add at least one size' };
     if (!colours.length) return { error: 'Add at least one colour' };
-    options = { sizes, colours };
+    options = { sizes, colours, ...(opts.combo === true ? { combo: true } : {}) };
   } else if (variants) {
     options = { lengths: variants.map(v => v.length), variants };
   } else {
@@ -979,16 +1015,18 @@ async function sendOrderEmails(orderId, env) {
     const number = o.order_ref.slice(0, 8).toUpperCase();
     const receiptUrl = `${env.RETURN_URL}?order=${o.order_ref}`;
     const address = [o.street, o.city, o.province, o.postal_code].filter(Boolean);
+    const discount = Math.round(o.subtotal + o.shipping - o.total);
 
     const jobs = [sendEmail(env, {
       to: o.email,
       reply_to: env.ORDER_ALERT_EMAIL,
       subject: `Your Ushoti Style order #${number}`,
-      html: orderEmailHtml(o, items, number, receiptUrl, address),
+      html: orderEmailHtml(o, items, number, receiptUrl, address, discount),
       text: [
         `Hi ${o.name_first}, thank you for your order. Your payment has been received.`,
         `Order #${number}`,
         ...items.map(i => `${i.qty} x ${i.name} (${i.option}): ${emailRand(i.price * i.qty)}`),
+        ...(discount > 0 ? [`Combo deal: -${emailRand(discount)}`] : []),
         `Delivery: ${emailRand(o.shipping)}`,
         `Total paid: ${emailRand(o.total)}`,
         `Delivering to: ${address.join(', ')}`,
@@ -1033,7 +1071,7 @@ function emailEscape(value) {
   return String(value ?? '').replace(/[&<>"']/g, c => `&#${c.charCodeAt(0)};`);
 }
 
-function orderEmailHtml(o, items, number, receiptUrl, address) {
+function orderEmailHtml(o, items, number, receiptUrl, address, discount) {
   const row = (label, value, style = '') => `
     <tr>
       <td style="padding:10px 0;border-bottom:1px solid #e0d5c0;${style}">${label}</td>
@@ -1049,6 +1087,7 @@ function orderEmailHtml(o, items, number, receiptUrl, address) {
       <p style="margin:0 0 8px;font-size:13px;color:#6b5f4f;">Order #${number}</p>
       <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="font-size:14px;">
         ${items.map(i => row(`${i.qty} &times; ${emailEscape(i.name)}<br/><span style="font-size:12px;color:#6b5f4f;">${emailEscape(i.option)}</span>`, emailRand(i.price * i.qty))).join('')}
+        ${discount > 0 ? row('Combo deal', `-${emailRand(discount)}`) : ''}
         ${row('Delivery', emailRand(o.shipping))}
         ${row('Total paid', emailRand(o.total), 'font-weight:bold;')}
       </table>

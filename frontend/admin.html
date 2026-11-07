@@ -154,6 +154,19 @@
           </div>
           <p class="admin-muted admin-hint">Express shows at checkout once both are filled in. Leave the fee blank to turn it off.</p>
 
+          <h3>Combo deal</h3>
+          <div class="form-row">
+            <div class="form-group">
+              <label for="set-combo-qty">Number of pairs</label>
+              <input type="number" id="set-combo-qty" min="2" max="10" step="1" required/>
+            </div>
+            <div class="form-group">
+              <label for="set-combo-price">Combo price (R)</label>
+              <input type="number" id="set-combo-price" min="1" step="1" placeholder="e.g. 1500"/>
+            </div>
+          </div>
+          <p class="admin-muted admin-hint">For example 2 pairs for R1500. Customers can mix any sneakers ticked &ldquo;Combo eligible&rdquo; on the Products tab, and the discount is taken off at checkout. Leave the price blank to turn the deal off.</p>
+
           <h3>Home page banner</h3>
           <div class="form-group">
             <label for="set-banner">Moving banner messages &mdash; one per line</label>
@@ -270,6 +283,9 @@
           <div id="pf-colours" class="admin-colours"></div>
           <button type="button" class="btn btn-ghost admin-btn-sm" id="add-colour-btn">+ Add colour</button>
         </div>
+        <label class="admin-check">
+          <input type="checkbox" id="pf-combo"/> Combo eligible &mdash; counts towards the combo deal
+        </label>
       </div>
 
       <div id="pf-hair-fields" hidden>

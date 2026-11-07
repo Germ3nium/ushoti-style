@@ -28,6 +28,8 @@ let shippingFee = 80;
 let paxiFee = 150;
 let expressFee = null; // null until the admin turns Express on
 let expressTime = '';
+let comboPrice = null; // null until the admin turns the combo deal on
+let comboQty = 2;
 let settingsPromise = null;
 
 function loadSettings() {
@@ -39,6 +41,8 @@ function loadSettings() {
         if (Number.isFinite(settings.paxi_fee)) paxiFee = settings.paxi_fee;
         if (Number.isFinite(settings.express_fee)) expressFee = settings.express_fee;
         expressTime = settings.express_time || '';
+        comboPrice = Number.isFinite(settings.combo_price) ? settings.combo_price : null;
+        if (settings.combo_qty >= 2) comboQty = settings.combo_qty;
         return settings;
       });
   }
@@ -126,6 +130,40 @@ function priceHtml(p) {
     : formatRand(p.price));
 }
 
+function isComboEligible(p) {
+  return comboPrice !== null && !!p?.options?.combo;
+}
+
+function comboDealText() {
+  return `Any ${comboQty} for ${formatRand(comboPrice)}`;
+}
+
+function comboNoteHtml(p) {
+  return isComboEligible(p)
+    ? `<div class="combo-note"><span class="combo-tag">Combo eligible</span> <span>${comboDealText()}</span></div>`
+    : '';
+}
+
+// Same sum as the backend's comboDiscount: the dearest eligible pairs are grouped first
+function cartComboDiscount() {
+  if (comboPrice === null) return 0;
+  const units = cart
+    .filter(item => isComboEligible(productsById[item.id.split('-')[0]]))
+    .flatMap(item => Array(item.qty).fill(item.price))
+    .sort((a, b) => b - a);
+  let discount = 0;
+  for (let i = 0; i + comboQty <= units.length; i += comboQty) {
+    discount += Math.max(0, units.slice(i, i + comboQty).reduce((s, p) => s + p, 0) - comboPrice);
+  }
+  return discount;
+}
+
+function comboLineHtml(discount) {
+  return discount > 0
+    ? `<div class="summary-line combo-line"><span>Combo deal (${comboDealText()})</span><span>&minus;R${discount.toFixed(2)}</span></div>`
+    : '';
+}
+
 // Screen reader version of priceHtml
 function priceText(p) {
   const sale = isOnSale(p) ? 'on sale, ' : '';
@@ -172,6 +210,7 @@ function productCardHtml(p, { featured = false } = {}) {
         ${featured
           ? `<div class="price-stock-row"><div class="price">${priceHtml(p)}</div></div>`
           : `<div class="price">${priceHtml(p)}</div>`}
+        ${comboNoteHtml(p)}
       </div>
     </div>`;
 }
@@ -208,7 +247,8 @@ function renderCategoryGrids() {
     bindProductCards(grid);
   });
 
-  loadProducts().then(list => {
+  // Settings say whether the combo deal is on; the products still show without them
+  Promise.all([loadProducts(), loadSettings().catch(() => null)]).then(([list]) => {
     grids.forEach(grid => {
       const saleOnly = grid.hasAttribute('data-sale');
       const categories = grid.dataset.products.split(' ');
@@ -411,6 +451,7 @@ function openSneakerModal(p) {
         <div>
           <div class="modal-title">${escapeHtml(p.name)}</div>
           <div class="modal-price">${priceHtml(p)}</div>
+          ${comboNoteHtml(p)}
           ${p.description ? `<p style="font-size:0.82rem;color:var(--text-muted);line-height:1.6;margin-top:0.6rem;">${escapeHtml(p.description)}</p>` : ''}
         </div>
 
@@ -543,9 +584,9 @@ function syncCartPrices() {
         changed = true;
       }
     });
-    if (!changed) return;
-    saveCart();
-    renderCart();
+    if (changed) saveCart();
+    renderCart(); // the combo discount needs the products, so always redraw
+
     renderOrderSummary();
   }).catch(() => { /* the backend still charges the right price */ });
 }
@@ -601,12 +642,14 @@ function renderCart() {
 
   const subtotal = cart.reduce((sum, i) => sum + i.price * i.qty, 0);
   const shipping = subtotal > 0 ? shippingFee : 0;
-  const total = subtotal + shipping;
+  const discount = cartComboDiscount();
+  const total = subtotal - discount + shipping;
 
   if (summaryEl) {
     summaryEl.style.display = 'block';
     summaryEl.innerHTML = `
       <div class="summary-line"><span>Subtotal</span><span>R${subtotal.toFixed(2)}</span></div>
+      ${comboLineHtml(discount)}
       <div class="summary-line"><span>Courier delivery</span><span>R${shipping.toFixed(2)}</span></div>
       <div class="summary-line total"><span>Total</span><span>R${total.toFixed(2)}</span></div>
       <a href="checkout.html" class="btn" style="margin-top:1rem;display:inline-block">Proceed to Checkout</a>
@@ -637,7 +680,8 @@ function renderOrderSummary() {
   const subtotal = cart.reduce((sum, i) => sum + i.price * i.qty, 0);
   const method = document.querySelector('input[name="delivery_method"]:checked')?.value;
   const shipping = method === 'paxi' ? paxiFee : method === 'express' ? expressFee : shippingFee;
-  const total = subtotal + shipping;
+  const discount = cartComboDiscount();
+  const total = subtotal - discount + shipping;
 
   document.getElementById('courier-price').textContent = `R${shippingFee.toFixed(2)}`;
   document.getElementById('paxi-price').textContent = `R${paxiFee.toFixed(2)}`;
@@ -653,6 +697,7 @@ function renderOrderSummary() {
         <span>${escapeHtml(i.name)} × ${i.qty}</span>
         <span>R${(i.price * i.qty).toFixed(2)}</span>
       </div>`).join('')}
+    ${comboLineHtml(discount)}
     <div class="summary-line"><span>${{ paxi: 'PAXI delivery', express: 'Express delivery' }[method] || 'Courier delivery'}</span><span>R${shipping.toFixed(2)}</span></div>
     <div class="summary-line total"><span>Total</span><span>R${total.toFixed(2)}</span></div>
   `;
