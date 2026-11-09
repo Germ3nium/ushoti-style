@@ -31,9 +31,9 @@ const EMAIL_FROM = 'Ushoti Style <orders@ushotistyle.co.za>';
 const DEFAULT_SHIPPING_FEE = 80; // used until the admin sets one
 const DEFAULT_PAXI_FEE = 150;
 const MAX_SHIPPING_FEE = 10000;
-// Combo deal: any COMBO_QTY sneakers marked combo-eligible for one set price
-const DEFAULT_COMBO_QTY = 2;
-const MAX_COMBO_QTY = 10;
+// Combo deals for sneakers ticked "Combo eligible", e.g. two R1100 pairs for R1500
+const MAX_COMBO_DEALS = 20;
+const MAX_COMBO_ITEMS = 6;
 const DEFAULT_BANNER = ['Premium Sneakers', 'Hair Extensions & Wigs', 'Secure PayFast Checkout', 'Nationwide Delivery', 'New Arrivals Weekly'];
 const MAX_BANNER_MESSAGES = 12;
 const MAX_BANNER_LENGTH = 80;
@@ -246,9 +246,7 @@ async function getSettings(env) {
     // Express shows at checkout only once the admin has set a fee and a time
     express_fee: stored.express_fee ? Number(stored.express_fee) : null,
     express_time: stored.express_time || '',
-    // The combo deal is off until the admin sets a price
-    combo_price: stored.combo_price ? Number(stored.combo_price) : null,
-    combo_qty: Number(stored.combo_qty) || DEFAULT_COMBO_QTY,
+    combo_deals: Array.isArray(safeJson(stored.combo_deals, null)) ? safeJson(stored.combo_deals, null) : [],
     banner: Array.isArray(banner) ? banner : DEFAULT_BANNER,
     stories: Array.isArray(stories) ? stories : DEFAULT_STORIES,
     slides: Array.isArray(slides) && slides.length ? slides : DEFAULT_SLIDES,
@@ -295,18 +293,10 @@ async function handleSaveSettings(request, env, cors) {
     updates.express_time = blank ? '' : time;
   }
 
-  if (body.combo_price !== undefined || body.combo_qty !== undefined) {
-    const blank = body.combo_price === null || body.combo_price === '';
-    const price = Number(body.combo_price);
-    const qty = Number(body.combo_qty ?? DEFAULT_COMBO_QTY);
-    if (!(Number.isInteger(qty) && qty >= 2 && qty <= MAX_COMBO_QTY)) {
-      return json({ error: `The combo must be for 2 to ${MAX_COMBO_QTY} pairs` }, cors, 400);
-    }
-    if (!blank && !(Number.isInteger(price) && price > 0 && price <= 1000000)) {
-      return json({ error: 'The combo price must be a whole number of rands, or blank to turn the deal off' }, cors, 400);
-    }
-    updates.combo_price = blank ? '' : String(price);
-    updates.combo_qty = String(qty);
+  if (body.combo_deals !== undefined) {
+    const deals = validateComboDeals(body.combo_deals);
+    if (deals.error) return json({ error: deals.error }, cors, 400);
+    updates.combo_deals = JSON.stringify(deals);
   }
 
   if (body.banner !== undefined) {
@@ -455,6 +445,29 @@ async function verifyPin(pin, stored) {
   return safeEqual(await hashPin(pin, saltBytes, Number(iterations)), stored);
 }
 
+function validateComboDeals(list) {
+  if (!Array.isArray(list)) return { error: 'Combo deals must be a list' };
+  if (list.length > MAX_COMBO_DEALS) return { error: `Use at most ${MAX_COMBO_DEALS} combo deals` };
+  const seen = new Set();
+  const deals = [];
+  for (const [i, raw] of list.entries()) {
+    const n = i + 1;
+    const items = (Array.isArray(raw.items) ? raw.items : String(raw.items || '').split(','))
+      .map(v => String(v).trim()).filter(Boolean).map(Number);
+    if (items.length < 2 || items.length > MAX_COMBO_ITEMS) return { error: `Combo deal ${n}: list 2 to ${MAX_COMBO_ITEMS} sneaker prices` };
+    if (!items.every(p => Number.isInteger(p) && p > 0)) return { error: `Combo deal ${n}: sneaker prices must be whole rands, like 1100, 1350` };
+    items.sort((a, b) => a - b);
+    const price = Number(raw.price);
+    if (!(Number.isInteger(price) && price > 0)) return { error: `Combo deal ${n}: add the deal price` };
+    if (price >= items.reduce((s, p) => s + p, 0)) return { error: `Combo deal ${n}: the deal price must be less than buying them separately` };
+    const key = items.join(',');
+    if (seen.has(key)) return { error: `Combo deal ${n}: the same sneakers are already in another deal` };
+    seen.add(key);
+    deals.push({ items, price });
+  }
+  return deals;
+}
+
 function validateSlides(list) {
   if (!Array.isArray(list) || !list.length) return { error: 'Keep at least one slide' };
   if (list.length > MAX_SLIDES) return { error: `Use at most ${MAX_SLIDES} slides` };
@@ -538,7 +551,7 @@ async function handleSignPayment(request, env, cors) {
   if (express && settings.express_fee === null) return json({ error: 'Express delivery is not available right now' }, cors, 400);
   const shipping = paxi ? settings.paxi_fee : express ? settings.express_fee : settings.shipping_fee;
   // The order keeps subtotal and total, so the discount is always subtotal + shipping - total
-  const discount = comboDiscount(items, settings);
+  const discount = comboSaving(items.filter(i => i.combo).flatMap(i => Array(i.qty).fill(i.price)), settings.combo_deals);
   const total    = subtotal - discount + shipping;
   const orderRef = crypto.randomUUID();
   const itemName = items.map(i => `${i.name} x${i.qty}`).join(', ');
@@ -651,18 +664,48 @@ async function priceCartItems(cartItems, env) {
   return priced;
 }
 
-// Every full group of combo-eligible pairs costs the combo price instead of their
-// own prices. The dearest pairs are grouped first, so the buyer saves the most.
-// The same sum runs in the browser (app.js) to show the discount before paying.
-function comboDiscount(items, settings) {
-  if (!settings.combo_price) return 0;
-  const units = items.filter(i => i.combo).flatMap(i => Array(i.qty).fill(i.price)).sort((a, b) => b - a);
-  let discount = 0;
-  for (let i = 0; i + settings.combo_qty <= units.length; i += settings.combo_qty) {
-    const group = units.slice(i, i + settings.combo_qty).reduce((s, p) => s + p, 0);
-    discount += Math.max(0, group - settings.combo_price);
+// The same comboSaving runs in the browser (app.js) to show the discount before paying.
+// Combo deals, e.g. { items: [1100, 1100], price: 1500 }: those sneaker prices together cost the
+// deal price. Finds the cheapest way to cover the eligible pairs with any mix of deals; pairs no
+// deal fits pay their own price. Returns the saving.
+function comboSaving(unitPrices, deals) {
+  if (!deals.length) return 0;
+  const prices = [...new Set(deals.flatMap(d => d.items))];
+  const counts = prices.map(p => unitPrices.filter(u => u === p).length);
+  const needs = deals.map(d => prices.map(p => d.items.filter(i => i === p).length));
+  const full = c => c.reduce((s, n, i) => s + n * prices[i], 0);
+  const take = (c, k) => c.map((n, i) => n - needs[k][i]);
+  const fits = (c, k) => needs[k].every((n, i) => n <= c[i]);
+
+  // Trying every mix is quick for real carts; a huge cart falls back to the best deal each time
+  const states = counts.reduce((s, n) => s * (n + 1), 1);
+  if (states > 20000) {
+    let c = counts, total = 0;
+    for (;;) {
+      let pick = -1, saved = 0;
+      deals.forEach((d, k) => {
+        const s = full(needs[k]) - d.price;
+        if (fits(c, k) && s > saved) { pick = k; saved = s; }
+      });
+      if (pick < 0) return full(counts) - (total + full(c));
+      total += deals[pick].price;
+      c = take(c, pick);
+    }
   }
-  return discount;
+
+  const memo = new Map();
+  const best = c => {
+    const key = c.join(',');
+    if (!memo.has(key)) {
+      let total = full(c);
+      deals.forEach((d, k) => {
+        if (fits(c, k)) total = Math.min(total, d.price + best(take(c, k)));
+      });
+      memo.set(key, total);
+    }
+    return memo.get(key);
+  };
+  return full(counts) - best(counts);
 }
 
 // ── Handle PayFast ITN Notification ─────────────────────────

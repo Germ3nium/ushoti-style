@@ -463,3 +463,14 @@ td > .admin-pill:first-child,
 
 .admin-pin-card { margin-top: 1.5rem; }
 #pin-status { margin-bottom: 1rem; }
+
+.admin-deal-head,
+.admin-deal-row {
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) minmax(0, 1fr) 36px;
+  gap: 0.5rem;
+  align-items: center;
+}
+.admin-deal-head { font-size: 0.75rem; color: var(--text-muted); margin: 0.75rem 0 0.35rem; }
+.admin-deal-row input { width: 100%; min-width: 0; }
+.admin-settings-card .admin-hint + h3 { margin-top: 1.5rem; }

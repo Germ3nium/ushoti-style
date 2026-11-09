@@ -154,18 +154,13 @@
           </div>
           <p class="admin-muted admin-hint">Express shows at checkout once both are filled in. Leave the fee blank to turn it off.</p>
 
-          <h3>Combo deal</h3>
-          <div class="form-row">
-            <div class="form-group">
-              <label for="set-combo-qty">Number of pairs</label>
-              <input type="number" id="set-combo-qty" min="2" max="10" step="1" required/>
-            </div>
-            <div class="form-group">
-              <label for="set-combo-price">Combo price (R)</label>
-              <input type="number" id="set-combo-price" min="1" step="1" placeholder="e.g. 1500"/>
-            </div>
+          <h3>Combo deals</h3>
+          <p class="admin-muted admin-hint">Each deal lists the prices of the sneakers in it and what they cost together. For example &ldquo;1100, 1100&rdquo; for R1500, or &ldquo;1100, 1350&rdquo; for R1800. Only sneakers ticked &ldquo;Combo eligible&rdquo; on the Products tab count. At checkout the customer gets the best mix of deals for what is in their cart.</p>
+          <div class="form-group">
+            <div class="admin-deal-head" aria-hidden="true"><span>Sneaker prices in the deal</span><span>Deal price (R)</span><span></span></div>
+            <div id="set-deals" class="admin-colours"></div>
+            <button type="button" class="btn btn-ghost admin-btn-sm" id="add-deal-btn">+ Add deal</button>
           </div>
-          <p class="admin-muted admin-hint">For example 2 pairs for R1500. Customers can mix any sneakers ticked &ldquo;Combo eligible&rdquo; on the Products tab, and the discount is taken off at checkout. Leave the price blank to turn the deal off.</p>
 
           <h3>Home page banner</h3>
           <div class="form-group">

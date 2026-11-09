@@ -119,8 +119,7 @@ async function loadSettings() {
   document.getElementById('set-express-fee').value = settings.express_fee ?? '';
   document.getElementById('set-express-time').value = settings.express_time || '';
   document.getElementById('set-banner').value = (settings.banner || []).join('\n');
-  document.getElementById('set-combo-qty').value = settings.combo_qty ?? 2;
-  document.getElementById('set-combo-price').value = settings.combo_price ?? '';
+  renderDealRows(settings.combo_deals || []);
 
   renderSlideEditors(settings.slides || []);
   renderStoryEditors(settings.stories || []);
@@ -166,6 +165,32 @@ document.getElementById('pin-form').addEventListener('submit', async e => {
     btn.disabled = false;
   }
 });
+
+// ── Combo deals ──
+function addDealRow(items = '', price = '') {
+  const row = document.createElement('div');
+  row.className = 'admin-deal-row';
+  row.innerHTML = `
+    <input type="text" inputmode="numeric" value="${escapeHtml(items)}" placeholder="e.g. 1100, 1100" aria-label="Sneaker prices in the deal" data-items/>
+    <input type="number" min="1" step="1" value="${escapeHtml(price)}" placeholder="e.g. 1500" aria-label="Deal price in rands" data-price/>
+    <button type="button" class="admin-icon-btn" aria-label="Remove deal">&times;</button>`;
+  row.querySelector('button').addEventListener('click', () => row.remove());
+  document.getElementById('set-deals').appendChild(row);
+  return row;
+}
+
+function renderDealRows(deals) {
+  document.getElementById('set-deals').innerHTML = '';
+  deals.forEach(d => addDealRow(d.items.join(', '), d.price));
+}
+
+function readDealRows() {
+  return [...document.querySelectorAll('#set-deals .admin-deal-row')]
+    .map(row => ({ items: row.querySelector('[data-items]').value, price: row.querySelector('[data-price]').value.trim() }))
+    .filter(d => d.items.trim() || d.price); // ignore rows left empty
+}
+
+document.getElementById('add-deal-btn').addEventListener('click', () => addDealRow().querySelector('input').focus());
 
 // ── Slideshow editors ──
 const MAX_SLIDES = 6;
@@ -390,8 +415,7 @@ document.getElementById('settings-form').addEventListener('submit', async e => {
         paxi_fee: Number(document.getElementById('set-paxi').value),
         express_fee: document.getElementById('set-express-fee').value,
         express_time: document.getElementById('set-express-time').value,
-        combo_qty: Number(document.getElementById('set-combo-qty').value),
-        combo_price: document.getElementById('set-combo-price').value,
+        combo_deals: readDealRows(),
         banner: document.getElementById('set-banner').value.split('\n').map(m => m.trim()).filter(Boolean),
         slides: readSlideEditors(),
         stories: readStoryEditors()
@@ -401,6 +425,7 @@ document.getElementById('settings-form').addEventListener('submit', async e => {
       throw new Error('Only some settings were saved — the backend needs to be deployed again.');
     }
     document.getElementById('set-banner').value = saved.banner.join('\n');
+    renderDealRows(saved.combo_deals || []);
     renderSlideEditors(saved.slides);
     showToast('Settings saved');
   } catch (err) {

@@ -2238,3 +2238,5 @@ footer {
 }
 .modal-body .combo-note { margin-top: 0.5rem; }
 .combo-line span:last-child { color: #a12a1a; }
+.combo-deals { list-style: none; width: 100%; margin: 0.15rem 0 0; padding: 0; font-size: 0.8rem; line-height: 1.6; }
+.combo-deals li::before { content: '\2022'; color: var(--gold); margin-right: 0.45rem; }

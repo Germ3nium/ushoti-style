@@ -28,8 +28,7 @@ let shippingFee = 80;
 let paxiFee = 150;
 let expressFee = null; // null until the admin turns Express on
 let expressTime = '';
-let comboPrice = null; // null until the admin turns the combo deal on
-let comboQty = 2;
+let comboDeals = []; // set on the admin Settings tab
 let settingsPromise = null;
 
 function loadSettings() {
@@ -41,8 +40,7 @@ function loadSettings() {
         if (Number.isFinite(settings.paxi_fee)) paxiFee = settings.paxi_fee;
         if (Number.isFinite(settings.express_fee)) expressFee = settings.express_fee;
         expressTime = settings.express_time || '';
-        comboPrice = Number.isFinite(settings.combo_price) ? settings.combo_price : null;
-        if (settings.combo_qty >= 2) comboQty = settings.combo_qty;
+        comboDeals = Array.isArray(settings.combo_deals) ? settings.combo_deals : [];
         return settings;
       });
   }
@@ -130,38 +128,79 @@ function priceHtml(p) {
     : formatRand(p.price));
 }
 
-function isComboEligible(p) {
-  return comboPrice !== null && !!p?.options?.combo;
+// Deals this sneaker can be part of, at the price it sells for now
+function comboDealsFor(p) {
+  return p?.options?.combo ? comboDeals.filter(d => d.items.includes(p.price)) : [];
 }
 
-function comboDealText() {
-  return `Any ${comboQty} for ${formatRand(comboPrice)}`;
+// e.g. "2 × R1,100 sneakers for R1,500" or "R1,100 + R1,350 sneakers for R1,800"
+function comboDealText(deal) {
+  const counts = {};
+  deal.items.forEach(p => { counts[p] = (counts[p] || 0) + 1; });
+  const parts = Object.entries(counts).map(([p, n]) => `${n > 1 ? `${n} × ` : ''}${formatRand(p)}`);
+  return `${parts.join(' + ')} sneakers for ${formatRand(deal.price)}`;
 }
 
-function comboNoteHtml(p) {
-  return isComboEligible(p)
-    ? `<div class="combo-note"><span class="combo-tag">Combo eligible</span> <span>${comboDealText()}</span></div>`
-    : '';
+// Cards get the tag; the product pop-up also lists the deals
+function comboNoteHtml(p, { details = false } = {}) {
+  const deals = comboDealsFor(p);
+  if (!deals.length) return '';
+  return `<div class="combo-note"><span class="combo-tag">Combo eligible</span>
+    ${details ? `<ul class="combo-deals">${deals.map(d => `<li>${comboDealText(d)}</li>`).join('')}</ul>` : ''}</div>`;
 }
 
-// Same sum as the backend's comboDiscount: the dearest eligible pairs are grouped first
 function cartComboDiscount() {
-  if (comboPrice === null) return 0;
   const units = cart
-    .filter(item => isComboEligible(productsById[item.id.split('-')[0]]))
-    .flatMap(item => Array(item.qty).fill(item.price))
-    .sort((a, b) => b - a);
-  let discount = 0;
-  for (let i = 0; i + comboQty <= units.length; i += comboQty) {
-    discount += Math.max(0, units.slice(i, i + comboQty).reduce((s, p) => s + p, 0) - comboPrice);
-  }
-  return discount;
+    .filter(item => productsById[item.id.split('-')[0]]?.options?.combo)
+    .flatMap(item => Array(item.qty).fill(item.price));
+  return comboSaving(units, comboDeals);
 }
 
 function comboLineHtml(discount) {
   return discount > 0
-    ? `<div class="summary-line combo-line"><span>Combo deal (${comboDealText()})</span><span>&minus;R${discount.toFixed(2)}</span></div>`
+    ? `<div class="summary-line combo-line"><span>Combo deal</span><span>&minus;R${discount.toFixed(2)}</span></div>`
     : '';
+}
+
+// Same as the backend's comboSaving, so the checkout shows exactly what is charged
+function comboSaving(unitPrices, deals) {
+  if (!deals.length) return 0;
+  const prices = [...new Set(deals.flatMap(d => d.items))];
+  const counts = prices.map(p => unitPrices.filter(u => u === p).length);
+  const needs = deals.map(d => prices.map(p => d.items.filter(i => i === p).length));
+  const full = c => c.reduce((s, n, i) => s + n * prices[i], 0);
+  const take = (c, k) => c.map((n, i) => n - needs[k][i]);
+  const fits = (c, k) => needs[k].every((n, i) => n <= c[i]);
+
+  // Trying every mix is quick for real carts; a huge cart falls back to the best deal each time
+  const states = counts.reduce((s, n) => s * (n + 1), 1);
+  if (states > 20000) {
+    let c = counts, total = 0;
+    for (;;) {
+      let pick = -1, saved = 0;
+      deals.forEach((d, k) => {
+        const s = full(needs[k]) - d.price;
+        if (fits(c, k) && s > saved) { pick = k; saved = s; }
+      });
+      if (pick < 0) return full(counts) - (total + full(c));
+      total += deals[pick].price;
+      c = take(c, pick);
+    }
+  }
+
+  const memo = new Map();
+  const best = c => {
+    const key = c.join(',');
+    if (!memo.has(key)) {
+      let total = full(c);
+      deals.forEach((d, k) => {
+        if (fits(c, k)) total = Math.min(total, d.price + best(take(c, k)));
+      });
+      memo.set(key, total);
+    }
+    return memo.get(key);
+  };
+  return full(counts) - best(counts);
 }
 
 // Screen reader version of priceHtml
@@ -451,7 +490,7 @@ function openSneakerModal(p) {
         <div>
           <div class="modal-title">${escapeHtml(p.name)}</div>
           <div class="modal-price">${priceHtml(p)}</div>
-          ${comboNoteHtml(p)}
+          ${comboNoteHtml(p, { details: true })}
           ${p.description ? `<p style="font-size:0.82rem;color:var(--text-muted);line-height:1.6;margin-top:0.6rem;">${escapeHtml(p.description)}</p>` : ''}
         </div>
 
