@@ -2277,11 +2277,12 @@ a.product-card:focus-visible { outline: 2px solid var(--gold); outline-offset: 3
   background: var(--bg-dark);
   overflow: hidden;
 }
+/* Fills the frame like the product cards do */
 .pdp-main-img {
   display: block;
   width: 100%;
   aspect-ratio: 4 / 3;
-  object-fit: contain;
+  object-fit: cover;
 }
 .pdp-nav {
   position: absolute;
