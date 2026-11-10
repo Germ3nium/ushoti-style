@@ -679,11 +679,6 @@ body > *:not(#particles-canvas):not(.modal-overlay):not(#toast):not(.sidebar-ove
   transform: scale(1.07);
 }
 
-/* Hair photos are usually tall, so hair cards get a taller frame and don't lose the length */
-.product-card[data-category="hair"] .product-card-img img {
-  aspect-ratio: 3 / 4;
-}
-
 /* shimmer overlay on hover */
 .product-card-img::after {
   content: '';
