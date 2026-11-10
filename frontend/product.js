@@ -126,10 +126,39 @@ function detailsHtml(p) {
     </div>`;
 }
 
+// Search engines read these after the page runs: the product's own description,
+// address, and name/price/photos as structured data
+function setSearchInfo(p) {
+  const url = `https://ushotistyle.co.za/product?id=${encodeURIComponent(p.id)}`;
+  const text = (p.description || `${p.name} at Ushoti Style, delivered across South Africa.`).replace(/\s+/g, ' ').trim();
+  document.querySelector('meta[name="description"]')?.setAttribute('content', text.length > 160 ? text.slice(0, 157) + '...' : text);
+  document.querySelector('link[rel="canonical"]')?.setAttribute('href', url);
+
+  const prices = productVariants(p).map(v => v.price);
+  const low = prices.length ? Math.min(...prices) : p.price;
+  const high = prices.length ? Math.max(...prices) : p.price;
+  const offers = low === high
+    ? { '@type': 'Offer', price: low, priceCurrency: 'ZAR', availability: 'https://schema.org/InStock', url }
+    : { '@type': 'AggregateOffer', lowPrice: low, highPrice: high, priceCurrency: 'ZAR', availability: 'https://schema.org/InStock', url };
+  const data = {
+    '@context': 'https://schema.org',
+    '@type': 'Product',
+    name: p.name,
+    image: productPhotos(p).map(src => new URL(src, 'https://ushotistyle.co.za/').href),
+    offers,
+  };
+  if (p.description) data.description = p.description;
+  const script = document.createElement('script');
+  script.type = 'application/ld+json';
+  script.textContent = JSON.stringify(data).replace(/</g, '\\u003c');
+  document.head.appendChild(script);
+}
+
 function renderProduct(p) {
   const cat = CATEGORY_PAGES[p.category] || CATEGORY_PAGES.sneakers;
   const hair = p.category === 'hair';
   document.title = `${p.name} | Ushoti Style`;
+  setSearchInfo(p);
   document.querySelector(`.nav-links a[href="${hair ? 'hair.html' : 'sneakers.html'}"]`)?.classList.add('active');
 
   pageEl.innerHTML = `
