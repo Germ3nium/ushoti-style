@@ -2289,11 +2289,11 @@ a.product-card:focus-visible { outline: 2px solid var(--gold); outline-offset: 3
   aspect-ratio: 4 / 3;
   object-fit: cover;
 }
-/* Hair: show the whole photo, top to bottom, so the full length is visible */
+/* Hair: a tall frame the same size for every photo. Most hair photos are 3:4
+   so they fill it exactly; other shapes show whole, never cut */
+.pdp-layout-hair { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
 .pdp-gallery-hair .pdp-main-img {
-  aspect-ratio: auto;
-  height: auto;
-  max-height: 85vh;
+  aspect-ratio: 3 / 4;
   object-fit: contain;
 }
 .pdp-nav {
@@ -2450,7 +2450,7 @@ a.product-card:focus-visible { outline: 2px solid var(--gold); outline-offset: 3
 
 @media (max-width: 900px) {
   .pdp { padding: 1.2rem 1rem 3rem; }
-  .pdp-layout { grid-template-columns: 1fr; gap: 1.8rem; }
+  .pdp-layout { grid-template-columns: minmax(0, 1fr); gap: 1.8rem; } /* minmax keeps the photo strip from widening the page */
   .pdp-info { position: static; }
   .pdp-thumbs {
     display: flex;

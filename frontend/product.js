@@ -167,7 +167,7 @@ function renderProduct(p) {
       <a href="${cat.page}">${cat.name}</a><span aria-hidden="true">/</span>
       <span aria-current="page">${escapeHtml(p.name)}</span>
     </div>
-    <div class="pdp-layout">
+    <div class="pdp-layout${hair ? ' pdp-layout-hair' : ''}">
       ${galleryHtml(p)}
       <div class="pdp-info">
         <p class="pdp-kicker">${cat.kicker}</p>
