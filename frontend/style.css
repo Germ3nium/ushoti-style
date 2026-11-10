@@ -2240,3 +2240,214 @@ footer {
 .combo-line span:last-child { color: #a12a1a; }
 .combo-deals { list-style: none; width: 100%; margin: 0.15rem 0 0; padding: 0; font-size: 0.8rem; line-height: 1.6; }
 .combo-deals li::before { content: '\2022'; color: var(--gold); margin-right: 0.45rem; }
+
+/* ── Product cards are links to the product page ─────────── */
+a.product-card { display: block; color: inherit; text-decoration: none; }
+a.product-card:focus-visible { outline: 2px solid var(--gold); outline-offset: 3px; }
+
+/* ── Product page ────────────────────────────────────────── */
+.pdp {
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 2rem 3rem 4rem;
+}
+
+.pdp-breadcrumb {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  font-size: 0.82rem;
+  color: var(--text-muted);
+  margin-bottom: 1.5rem;
+}
+.pdp-breadcrumb a { color: var(--text-soft); text-decoration: none; }
+.pdp-breadcrumb a:hover { color: var(--gold); }
+.pdp-breadcrumb [aria-current] { color: var(--text); }
+
+.pdp-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr);
+  gap: 3.5rem;
+  align-items: start;
+}
+
+/* Gallery: one big photo with the thumbnails underneath */
+.pdp-main {
+  position: relative;
+  background: var(--bg-dark);
+  overflow: hidden;
+}
+.pdp-main-img {
+  display: block;
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  object-fit: contain;
+}
+.pdp-nav {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 44px;
+  height: 44px;
+  border: none;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.9);
+  color: var(--text);
+  font-size: 1.6rem;
+  line-height: 1;
+  cursor: pointer;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.12);
+}
+.pdp-nav:hover { background: #fff; color: var(--gold); }
+.pdp-nav:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
+.pdp-nav-prev { left: 1rem; }
+.pdp-nav-next { right: 1rem; }
+
+.pdp-thumbs {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 0.6rem;
+  margin-top: 0.6rem;
+}
+.pdp-thumb {
+  padding: 0;
+  border: 2px solid transparent;
+  background: var(--bg-dark);
+  cursor: pointer;
+  opacity: 0.75;
+  transition: opacity 0.2s, border-color 0.2s;
+}
+.pdp-thumb img { display: block; width: 100%; aspect-ratio: 1; object-fit: cover; }
+.pdp-thumb:hover { opacity: 1; }
+.pdp-thumb.active { opacity: 1; border-color: var(--text); }
+.pdp-thumb:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
+
+/* Details beside the photos; they stay in view while the photos scroll */
+.pdp-info { position: sticky; top: 6rem; }
+.pdp-kicker {
+  font-size: 0.78rem;
+  font-weight: 600;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: var(--gold);
+  margin-bottom: 0.4rem;
+}
+.pdp-title {
+  font-family: 'Playfair Display', serif;
+  font-size: clamp(1.8rem, 3vw, 2.6rem);
+  font-weight: 600;
+  line-height: 1.15;
+  color: var(--text);
+  margin-bottom: 0.9rem;
+}
+.pdp-price { font-size: 1.35rem; font-weight: 600; color: var(--text); }
+.pdp-info .combo-note { margin-top: 0.9rem; }
+
+.pdp-option { margin-top: 1.6rem; }
+.pdp-option-label { font-size: 0.95rem; font-weight: 500; color: var(--text); margin-bottom: 0.7rem; }
+.pdp-colour-name { font-weight: 400; color: var(--text-soft); }
+.pdp-colours { display: flex; flex-wrap: wrap; gap: 0.7rem; }
+.pdp-colours .colour-swatch { width: 34px; height: 34px; }
+
+.pdp-sizes {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 0.5rem;
+}
+.pdp-size {
+  height: 52px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg-card);
+  color: var(--text);
+  font-size: 0.95rem;
+  cursor: pointer;
+  transition: border-color 0.2s;
+}
+.pdp-size:hover { border-color: var(--text); }
+.pdp-size.selected { border: 2px solid var(--text); font-weight: 600; }
+.pdp-size:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
+
+.pdp-selection { margin-top: 1rem; font-size: 0.85rem; color: var(--text-muted); }
+
+.pdp-add {
+  display: block;
+  width: 100%;
+  margin-top: 1.2rem;
+  padding: 1.15rem;
+  border: none;
+  border-radius: 999px;
+  background: var(--text);
+  color: #fff;
+  font-family: 'Inter', sans-serif;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+.pdp-add:hover:not(:disabled) { background: var(--gold); }
+.pdp-add:disabled { opacity: 0.45; cursor: not-allowed; }
+.pdp-add:focus-visible { outline: 2px solid var(--gold); outline-offset: 3px; }
+
+.pdp-view-cart {
+  display: block;
+  margin-top: 0.7rem;
+  padding: 1.05rem;
+  border: 1px solid var(--border-dark);
+  border-radius: 999px;
+  text-align: center;
+  color: var(--text);
+  font-weight: 600;
+  text-decoration: none;
+  transition: border-color 0.2s;
+}
+.pdp-view-cart:hover { border-color: var(--text); }
+
+.pdp-details { margin-top: 2rem; border-top: 1px solid var(--border); }
+.pdp-details details { border-bottom: 1px solid var(--border); }
+.pdp-details summary {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1.2rem 0;
+  font-size: 1.05rem;
+  font-weight: 500;
+  color: var(--text);
+  cursor: pointer;
+  list-style: none;
+}
+.pdp-details summary::-webkit-details-marker { display: none; }
+.pdp-details summary::after {
+  content: '';
+  width: 9px;
+  height: 9px;
+  border-right: 2px solid currentColor;
+  border-bottom: 2px solid currentColor;
+  transform: rotate(45deg);
+  margin-right: 4px;
+  transition: transform 0.2s;
+}
+.pdp-details details[open] summary::after { transform: rotate(-135deg); }
+.pdp-details p { font-size: 0.9rem; line-height: 1.7; color: var(--text-soft); margin-bottom: 1rem; }
+.pdp-details a { color: var(--gold); }
+
+.pdp-missing { text-align: center; padding: 4rem 1rem; }
+.pdp-missing h1 { font-family: 'Playfair Display', serif; font-size: 1.8rem; margin-bottom: 0.6rem; }
+.pdp-missing p { color: var(--text-muted); margin-bottom: 1.5rem; }
+
+@media (max-width: 900px) {
+  .pdp { padding: 1.2rem 1rem 3rem; }
+  .pdp-layout { grid-template-columns: 1fr; gap: 1.8rem; }
+  .pdp-info { position: static; }
+  .pdp-thumbs {
+    display: flex;
+    overflow-x: auto;
+    scroll-snap-type: x mandatory;
+  }
+  .pdp-thumb { flex: 0 0 72px; scroll-snap-align: start; }
+  .pdp-nav { width: 36px; height: 36px; font-size: 1.3rem; }
+}
+
+@media (max-width: 380px) {
+  .pdp-sizes { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+}

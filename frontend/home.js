@@ -293,16 +293,6 @@ function renderStories() {
 
 renderStories();
 
-// ── Wishlist Toggle ──────────────────────────────────────
-function toggleWishlist(e, name) {
-  e.stopPropagation();
-  const btn = e.target.closest('.wishlist-btn');
-  const isFilled = btn.classList.toggle('active');
-  if (typeof showToast === 'function') {
-    showToast(isFilled ? `${name} added to your wishlist!` : `${name} removed from your wishlist.`);
-  }
-}
-
 // ── Newsletter Subscription ──────────────────────────────
 function subscribeNewsletter(e) {
   e.preventDefault();
