@@ -25,7 +25,7 @@ function galleryHtml(p) {
   const name = escapeHtml(p.name);
   const many = photos.length > 1;
   return `
-    <div class="pdp-gallery">
+    <div class="pdp-gallery${p.category === 'hair' ? ' pdp-gallery-hair' : ''}">
       <div class="pdp-main">
         <img class="pdp-main-img" src="${escapeHtml(sizedImage(photos[0], 1200, 900))}" alt="${name}, photo 1 of ${photos.length}" onerror="${IMG_ONERROR}"/>
         ${tagsHtml(p)}

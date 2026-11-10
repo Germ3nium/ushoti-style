@@ -679,6 +679,11 @@ body > *:not(#particles-canvas):not(.modal-overlay):not(#toast):not(.sidebar-ove
   transform: scale(1.07);
 }
 
+/* Hair photos are usually tall, so hair cards get a taller frame and don't lose the length */
+.product-card[data-category="hair"] .product-card-img img {
+  aspect-ratio: 3 / 4;
+}
+
 /* shimmer overlay on hover */
 .product-card-img::after {
   content: '';
@@ -2283,6 +2288,13 @@ a.product-card:focus-visible { outline: 2px solid var(--gold); outline-offset: 3
   width: 100%;
   aspect-ratio: 4 / 3;
   object-fit: cover;
+}
+/* Hair: show the whole photo, top to bottom, so the full length is visible */
+.pdp-gallery-hair .pdp-main-img {
+  aspect-ratio: auto;
+  height: auto;
+  max-height: 85vh;
+  object-fit: contain;
 }
 .pdp-nav {
   position: absolute;
