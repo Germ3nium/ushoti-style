@@ -31,7 +31,9 @@ const EMAIL_FROM = 'Ushoti Style <orders@ushotistyle.co.za>';
 const DEFAULT_SHIPPING_FEE = 80; // used until the admin sets one
 const DEFAULT_PAXI_FEE = 150;
 const MAX_SHIPPING_FEE = 10000;
-// Combo deals for sneakers ticked "Combo eligible", e.g. two R1100 pairs for R1500
+// Combo deals for sneakers ticked "Combo eligible", e.g. two R1100 pairs for R1500.
+// Each deal is for adult sneakers or kids sneakers, and only counts that kind.
+const COMBO_GROUPS = ['sneakers', 'kids'];
 const MAX_COMBO_DEALS = 20;
 const MAX_COMBO_ITEMS = 6;
 const DEFAULT_BANNER = ['Premium Sneakers', 'Hair Extensions & Wigs', 'Secure PayFast Checkout', 'Nationwide Delivery', 'New Arrivals Weekly'];
@@ -461,9 +463,10 @@ function validateComboDeals(list) {
     if (!(Number.isInteger(price) && price > 0)) return { error: `Combo deal ${n}: add the deal price` };
     if (price >= items.reduce((s, p) => s + p, 0)) return { error: `Combo deal ${n}: the deal price must be less than buying them separately` };
     const key = items.join(',');
-    if (seen.has(key)) return { error: `Combo deal ${n}: the same sneakers are already in another deal` };
-    seen.add(key);
-    deals.push({ items, price });
+    const group = COMBO_GROUPS.includes(raw.group) ? raw.group : 'sneakers';
+    if (seen.has(`${group}:${key}`)) return { error: `Combo deal ${n}: the same sneakers are already in another deal` };
+    seen.add(`${group}:${key}`);
+    deals.push({ group, items, price });
   }
   return deals;
 }
@@ -551,7 +554,7 @@ async function handleSignPayment(request, env, cors) {
   if (express && settings.express_fee === null) return json({ error: 'Express delivery is not available right now' }, cors, 400);
   const shipping = paxi ? settings.paxi_fee : express ? settings.express_fee : settings.shipping_fee;
   // The order keeps subtotal and total, so the discount is always subtotal + shipping - total
-  const discount = comboSaving(items.filter(i => i.combo).flatMap(i => Array(i.qty).fill(i.price)), settings.combo_deals);
+  const discount = comboDiscount(items, settings.combo_deals);
   const total    = subtotal - discount + shipping;
   const orderRef = crypto.randomUUID();
   const itemName = items.map(i => `${i.name} x${i.qty}`).join(', ');
@@ -659,9 +662,18 @@ async function priceCartItems(cartItems, env) {
       if (variant) price = variantPrice(variant);
     }
 
-    priced.push({ product_id: p.id, name: p.name, option, price, qty, ...(p.category !== 'hair' && p.options.combo ? { combo: true } : {}) });
+    priced.push({ product_id: p.id, name: p.name, option, price, qty, ...(p.category !== 'hair' && p.options.combo ? { combo: p.category } : {}) });
   }
   return priced;
+}
+
+// Adult and kids deals are worked out separately, each on its own eligible pairs.
+// items: [{ combo: 'sneakers' | 'kids' | undefined, price, qty }]
+function comboDiscount(items, deals) {
+  return COMBO_GROUPS.reduce((saving, group) => saving + comboSaving(
+    items.filter(i => i.combo === group).flatMap(i => Array(i.qty).fill(i.price)),
+    deals.filter(d => (d.group || 'sneakers') === group)
+  ), 0);
 }
 
 // The same comboSaving runs in the browser (app.js) to show the discount before paying.

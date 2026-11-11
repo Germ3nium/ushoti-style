@@ -167,10 +167,14 @@ document.getElementById('pin-form').addEventListener('submit', async e => {
 });
 
 // ── Combo deals ──
-function addDealRow(items = '', price = '') {
+function addDealRow(items = '', price = '', group = 'sneakers') {
   const row = document.createElement('div');
   row.className = 'admin-deal-row';
   row.innerHTML = `
+    <select aria-label="Who the deal is for" data-group>
+      <option value="sneakers"${group === 'kids' ? '' : ' selected'}>Adult</option>
+      <option value="kids"${group === 'kids' ? ' selected' : ''}>Kids</option>
+    </select>
     <input type="text" inputmode="numeric" value="${escapeHtml(items)}" placeholder="e.g. 1100, 1100" aria-label="Sneaker prices in the deal" data-items/>
     <input type="number" min="1" step="1" value="${escapeHtml(price)}" placeholder="e.g. 1500" aria-label="Deal price in rands" data-price/>
     <button type="button" class="admin-icon-btn" aria-label="Remove deal">&times;</button>`;
@@ -181,12 +185,16 @@ function addDealRow(items = '', price = '') {
 
 function renderDealRows(deals) {
   document.getElementById('set-deals').innerHTML = '';
-  deals.forEach(d => addDealRow(d.items.join(', '), d.price));
+  deals.forEach(d => addDealRow(d.items.join(', '), d.price, d.group));
 }
 
 function readDealRows() {
   return [...document.querySelectorAll('#set-deals .admin-deal-row')]
-    .map(row => ({ items: row.querySelector('[data-items]').value, price: row.querySelector('[data-price]').value.trim() }))
+    .map(row => ({
+      group: row.querySelector('[data-group]').value,
+      items: row.querySelector('[data-items]').value,
+      price: row.querySelector('[data-price]').value.trim()
+    }))
     .filter(d => d.items.trim() || d.price); // ignore rows left empty
 }
 

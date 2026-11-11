@@ -129,8 +129,11 @@ function priceHtml(p) {
 }
 
 // Deals this sneaker can be part of, at the price it sells for now
+// Adult deals only count adult sneakers, kids deals only kids sneakers
 function comboDealsFor(p) {
-  return p?.options?.combo ? comboDeals.filter(d => d.items.includes(p.price)) : [];
+  return p?.options?.combo && p.category !== 'hair'
+    ? comboDeals.filter(d => (d.group || 'sneakers') === p.category && d.items.includes(p.price))
+    : [];
 }
 
 // e.g. "2 × R1,100 sneakers for R1,500" or "R1,100 + R1,350 sneakers for R1,800"
@@ -138,7 +141,7 @@ function comboDealText(deal) {
   const counts = {};
   deal.items.forEach(p => { counts[p] = (counts[p] || 0) + 1; });
   const parts = Object.entries(counts).map(([p, n]) => `${n > 1 ? `${n} × ` : ''}${formatRand(p)}`);
-  return `${parts.join(' + ')} sneakers for ${formatRand(deal.price)}`;
+  return `${parts.join(' + ')} ${deal.group === 'kids' ? 'kids sneakers' : 'sneakers'} for ${formatRand(deal.price)}`;
 }
 
 // Cards get the tag; the product pop-up also lists the deals
@@ -150,10 +153,15 @@ function comboNoteHtml(p, { details = false } = {}) {
 }
 
 function cartComboDiscount() {
-  const units = cart
-    .filter(item => productsById[item.id.split('-')[0]]?.options?.combo)
-    .flatMap(item => Array(item.qty).fill(item.price));
-  return comboSaving(units, comboDeals);
+  return ['sneakers', 'kids'].reduce((saving, group) => {
+    const units = cart
+      .filter(item => {
+        const p = productsById[item.id.split('-')[0]];
+        return p?.options?.combo && p.category === group;
+      })
+      .flatMap(item => Array(item.qty).fill(item.price));
+    return saving + comboSaving(units, comboDeals.filter(d => (d.group || 'sneakers') === group));
+  }, 0);
 }
 
 function comboLineHtml(discount) {
