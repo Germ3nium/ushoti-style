@@ -364,6 +364,11 @@ td > .admin-pill:first-child,
   font-size: 0.6rem; font-weight: 700; letter-spacing: 1px; text-transform: uppercase;
   padding: 0.1rem 0.35rem;
 }
+.admin-photo-number {
+  position: absolute; top: 4px; right: 4px;
+  min-width: 20px; height: 20px; line-height: 20px; text-align: center;
+  background: rgba(0, 0, 0, 0.7); color: #fff; font-size: 0.72rem; border-radius: 50%;
+}
 .admin-photo-actions { display: flex; justify-content: space-between; margin-top: 0.25rem; }
 .admin-photo-actions button {
   width: 28px; height: 28px;
@@ -387,7 +392,9 @@ td > .admin-pill:first-child,
   flex: none;
 }
 
-.admin-colour-row input[type=text] { flex: 1; }
+.admin-colour-row input[type=text] { flex: 1; min-width: 0; }
+.admin-colour-row select { flex: none; width: 115px; height: 40px; }
+.admin-colour-thumb { flex: none; width: 40px; height: 40px; object-fit: cover; border: 1px solid var(--border); }
 
 .admin-length-head,
 .admin-length-row {

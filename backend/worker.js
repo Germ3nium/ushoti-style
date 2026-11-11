@@ -931,7 +931,12 @@ function validateProduct(body) {
     // Kids sizes run 10-13 then start again at 1, so keep the order the admin typed
     const sizes = toNumberList(opts.sizes, { sorted: category !== 'kids' });
     const colours = (Array.isArray(opts.colours) ? opts.colours : [])
-      .map(c => ({ name: String(c.name || '').trim(), hex: String(c.hex || '').toLowerCase() }))
+      .map(c => ({
+        name: String(c.name || '').trim(),
+        hex: String(c.hex || '').toLowerCase(),
+        // The photo shown when a shopper picks this colour: one of this product's own photos
+        ...(images.includes(c.image) ? { image: c.image } : {}),
+      }))
       .filter(c => c.name && /^#[0-9a-f]{6}$/.test(c.hex));
     if (!sizes.length)   return { error: 'Add at least one size' };
     if (!colours.length) return { error: 'Add at least one colour' };

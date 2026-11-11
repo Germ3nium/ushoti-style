@@ -696,14 +696,35 @@ const form = document.getElementById('product-form');
 const $ = id => document.getElementById(id);
 let editingId = null;
 
-function addColourRow(name = '', hex = '#000000') {
+// Fills a colour's photo list from the product's current photos.
+// Colours remember the photo itself, so moving photos around keeps the match.
+function fillColourPhoto(row, chosen) {
+  const select = row.querySelector('select');
+  const thumb = row.querySelector('.admin-colour-thumb');
+  select.innerHTML = '<option value="">No photo</option>' +
+    photos.map((url, i) => `<option value="${escapeHtml(url)}">Photo ${i + 1}</option>`).join('');
+  select.value = photos.includes(chosen) ? chosen : '';
+  showColourThumb(select, thumb);
+}
+
+function showColourThumb(select, thumb) {
+  thumb.hidden = !select.value;
+  if (select.value) thumb.src = sizedImage(select.value, 80, 80);
+}
+
+function addColourRow(name = '', hex = '#000000', image = '') {
   const row = document.createElement('div');
   row.className = 'admin-colour-row';
   row.innerHTML = `
     <input type="color" value="${escapeHtml(hex)}" aria-label="Colour"/>
     <input type="text" value="${escapeHtml(name)}" placeholder="Colour name, e.g. White" aria-label="Colour name"/>
+    <select aria-label="Photo shown for this colour"></select>
+    <img class="admin-colour-thumb" alt="" hidden/>
     <button type="button" class="admin-icon-btn" aria-label="Remove colour">&times;</button>`;
   row.querySelector('button').addEventListener('click', () => row.remove());
+  const select = row.querySelector('select');
+  select.addEventListener('change', () => showColourThumb(select, row.querySelector('.admin-colour-thumb')));
+  fillColourPhoto(row, image);
   $('pf-colours').appendChild(row);
 }
 
@@ -756,12 +777,14 @@ function renderPhotos() {
     <li class="admin-photo">
       <img src="${escapeHtml(sizedImage(url, 184, 184))}" alt="Photo ${i + 1}" onerror="${IMG_ONERROR}"/>
       ${i === 0 ? '<span class="admin-photo-cover">Cover</span>' : ''}
+      <span class="admin-photo-number">${i + 1}</span>
       <div class="admin-photo-actions">
         <button type="button" data-move="${i}" ${i === 0 ? 'disabled' : ''} aria-label="Move photo ${i + 1} earlier" title="Move earlier">&larr;</button>
         <button type="button" class="admin-photo-remove" data-remove="${i}" aria-label="Remove photo ${i + 1}" title="Remove">&times;</button>
       </div>
     </li>`).join('');
   $('pf-upload-btn').disabled = photos.length >= MAX_PHOTOS;
+  $('pf-colours').querySelectorAll('.admin-colour-row').forEach(row => fillColourPhoto(row, row.querySelector('select').value));
 }
 
 $('pf-photos').addEventListener('click', e => {
@@ -849,7 +872,7 @@ function openProductEditor(p = null) {
   // Products from before per-length pricing start with their one price on every length
   (opts.variants || (opts.lengths || []).map(length => ({ length, price: p.price, sale_price: p.sale_price })))
     .forEach(v => addLengthRow(v.length, v.price, v.sale_price ?? ''));
-  (opts.colours || []).forEach(c => addColourRow(c.name, c.hex));
+  (opts.colours || []).forEach(c => addColourRow(c.name, c.hex, c.image));
   if (!p) addColourRow();
 
   syncCategoryFields();
@@ -925,7 +948,8 @@ form.addEventListener('submit', async e => {
           combo: $('pf-combo').checked,
           colours: [...$('pf-colours').querySelectorAll('.admin-colour-row')].map(row => ({
             hex:  row.querySelector('input[type=color]').value,
-            name: row.querySelector('input[type=text]').value.trim()
+            name: row.querySelector('input[type=text]').value.trim(),
+            image: row.querySelector('select').value
           }))
         }
       : { variants: readLengthRows() }

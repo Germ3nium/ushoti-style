@@ -47,7 +47,7 @@ function galleryHtml(p) {
 // Arrows, thumbnails, swipe and the ← → keys all move through the same photos
 function bindGallery(p) {
   const photos = productPhotos(p);
-  if (photos.length < 2) return;
+  if (photos.length < 2) return () => {};
   const main = pageEl.querySelector('.pdp-main-img');
   const thumbs = [...pageEl.querySelectorAll('.pdp-thumb')];
   let current = 0;
@@ -61,7 +61,9 @@ function bindGallery(p) {
       t.classList.toggle('active', n === current);
       t.toggleAttribute('aria-current', n === current);
     });
-    thumbs[current].scrollIntoView({ block: 'nearest', inline: 'nearest' });
+    // Only the strip moves, so picking a colour further down doesn't jump the page
+    const strip = thumbs[current].parentElement;
+    strip.scrollLeft += thumbs[current].getBoundingClientRect().left - strip.getBoundingClientRect().left;
   };
 
   pageEl.querySelector('.pdp-nav-prev').addEventListener('click', () => show(current - 1));
@@ -82,6 +84,11 @@ function bindGallery(p) {
     if (e.key === 'ArrowLeft')  show(current - 1);
     if (e.key === 'ArrowRight') show(current + 1);
   });
+
+  return url => {
+    const i = photos.indexOf(url);
+    if (i !== -1) show(i);
+  };
 }
 
 function optionsHtml(p) {
@@ -182,9 +189,9 @@ function renderProduct(p) {
       </div>
     </div>`;
 
-  bindGallery(p);
+  const showPhoto = bindGallery(p);
   if (hair) bindHairOptions(p);
-  else bindSneakerOptions(p);
+  else bindSneakerOptions(p, showPhoto);
 }
 
 function selectButton(buttons, btn) {
@@ -194,13 +201,14 @@ function selectButton(buttons, btn) {
   });
 }
 
-function bindSneakerOptions(p) {
+function bindSneakerOptions(p, showPhoto) {
   const colours = p.options.colours || [];
   const sizeBtns = [...pageEl.querySelectorAll('.pdp-size')];
   const swatches = [...pageEl.querySelectorAll('.colour-swatch')];
   const info = document.getElementById('pdp-selection');
   const addBtn = document.getElementById('pdp-add');
-  const colourName = hex => (colours.find(c => c.hex === hex) || {}).name || hex;
+  const colourOf = hex => colours.find(c => c.hex === hex) || {};
+  const colourName = hex => colourOf(hex).name || hex;
   let size = null;
   let colour = null;
 
@@ -221,12 +229,14 @@ function bindSneakerOptions(p) {
     selectButton(swatches, sw);
     colour = sw.dataset.colour;
     pageEl.querySelector('.pdp-colour-name').textContent = colourName(colour);
+    // With only one colour it's picked automatically, so the cover photo stays
+    if (swatches.length > 1 && colourOf(colour).image) showPhoto(colourOf(colour).image);
     update();
   }));
   if (swatches.length === 1) swatches[0].click(); // nothing to choose
 
   addBtn.addEventListener('click', () => {
-    addToCart(`${p.id}-${size}-${colour}`, `${p.name} (Size ${size}, ${colourName(colour)})`, p.price, sizedImage(p.image, 80, 80));
+    addToCart(`${p.id}-${size}-${colour}`, `${p.name} (Size ${size}, ${colourName(colour)})`, p.price, sizedImage(colourOf(colour).image || p.image, 80, 80));
   });
 }
 
