@@ -288,6 +288,23 @@ function renderCategoryGrids() {
   });
 }
 
+// Collection cards for clothes, makeup and handbags have no photo of their own: each shows
+// the cover photo of its category's first product, and stays hidden until there is one
+function fillCategoryCovers() {
+  const cards = document.querySelectorAll('[data-category-cover]');
+  if (!cards.length) return;
+  loadProducts().then(list => {
+    cards.forEach(card => {
+      const first = list.find(p => p.category === card.dataset.categoryCover);
+      if (!first) return;
+      const img = card.querySelector('img');
+      img.setAttribute('onerror', IMG_ONERROR);
+      img.src = sizedImage(first.image, 800, 600);
+      card.hidden = false;
+    });
+  }).catch(() => { /* the cards just stay hidden */ });
+}
+
 // Keeps hand-written promo blocks in sync with admin: live prices, and the
 // block is hidden if the product is removed or hidden from the shop
 function syncPromoProducts() {
@@ -501,5 +518,6 @@ document.addEventListener('DOMContentLoaded', () => {
   }
   if (document.getElementById('cart-summary') || document.getElementById('order-summary')) syncCartPrices();
   renderCategoryGrids();
+  fillCategoryCovers();
   syncPromoProducts();
 });

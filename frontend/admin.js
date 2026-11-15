@@ -207,6 +207,9 @@ const SLIDE_LINKS = [
   ['sneakers.html', 'Sneakers page'],
   ['kids.html', 'Kids Sneakers page'],
   ['hair.html', 'Hair page'],
+  ['clothes.html', 'Clothes page'],
+  ['makeup.html', 'Makeup page'],
+  ['handbags.html', 'Handbags page'],
   ['sale.html', 'On Sale page'],
   ['products.html', 'All products page'],
   ['#collections', 'Collections (home page)'],
@@ -759,16 +762,36 @@ function readLengthRows() {
     .filter(r => r.length || r.price || r.sale_price); // ignore rows left empty
 }
 
-const CATEGORY_NAMES = { sneakers: 'Sneakers', kids: 'Kids Sneakers', hair: 'Hair' };
+const CATEGORY_NAMES = {
+  sneakers: 'Sneakers', kids: 'Kids Sneakers', hair: 'Hair',
+  clothes: 'Clothes', makeup: 'Makeup', handbags: 'Handbags'
+};
+const SHOE_CATEGORIES = ['sneakers', 'kids'];
+// Size suggestions for each category; sizes are optional for clothes, makeup and handbags
+const SIZE_PLACEHOLDERS = {
+  sneakers: '4, 5, 6, 7, 8, 9, 10, 11, 12, 13',
+  kids: '10, 11, 12, 13, 1, 2, 3',
+  clothes: 'S, M, L, XL',
+  makeup: 'Leave blank if none, e.g. 30ml, 50ml',
+  handbags: 'Leave blank if none'
+};
 const ADULT_SIZES = [4, 5, 6, 7, 8, 9, 10, 11, 12, 13];
 
 // Kids sizes show in the order they're typed, so suggest the usual order
 function syncSizesPlaceholder() {
-  $('pf-sizes').placeholder = ($('pf-category').value === 'kids' ? [10, 11, 12, 13, 1, 2, 3] : ADULT_SIZES).join(', ');
+  $('pf-sizes').placeholder = SIZE_PLACEHOLDERS[$('pf-category').value] || '';
 }
 
 function syncCategoryFields() {
-  const hair = $('pf-category').value === 'hair';
+  const category = $('pf-category').value;
+  const hair = category === 'hair';
+  const shoes = SHOE_CATEGORIES.includes(category);
+  // Combo deals are for sneakers only; other categories' sizes and colours are optional
+  $('pf-combo-row').hidden = !shoes;
+  $('pf-sizes-hint').hidden = shoes;
+  $('pf-colours-hint').hidden = shoes;
+  $('pf-colours-label').textContent = category === 'makeup' ? 'Shades' : 'Colours';
+  $('add-colour-btn').textContent = category === 'makeup' ? '+ Add shade' : '+ Add colour';
   $('pf-sneaker-fields').hidden = hair;
   $('pf-hair-fields').hidden = !hair;
   // Hair is priced per length, so the single price fields don't apply
@@ -895,8 +918,8 @@ $('add-colour-btn').addEventListener('click', () => addColourRow());
 $('add-length-btn').addEventListener('click', () => addLengthRow().querySelector('input').focus());
 $('pf-category').addEventListener('change', () => {
   syncCategoryFields();
-  // New kids products start blank: the adult sizes don't apply to them
-  if (!editingId) $('pf-sizes').value = $('pf-category').value === 'kids' ? '' : ADULT_SIZES.join(', ');
+  // Only new adult sneakers start with sizes filled in
+  if (!editingId) $('pf-sizes').value = $('pf-category').value === 'sneakers' ? ADULT_SIZES.join(', ') : '';
   syncSizesPlaceholder();
 });
 $('pf-upload-btn').addEventListener('click', () => $('pf-upload').click());
@@ -953,7 +976,7 @@ form.addEventListener('submit', async e => {
     options: category !== 'hair'
       ? {
           sizes: $('pf-sizes').value,
-          combo: $('pf-combo').checked,
+          combo: SHOE_CATEGORIES.includes(category) && $('pf-combo').checked,
           colours: [...$('pf-colours').querySelectorAll('.admin-colour-row')].map(row => ({
             hex:  row.querySelector('input[type=color]').value,
             name: row.querySelector('input[type=text]').value.trim(),

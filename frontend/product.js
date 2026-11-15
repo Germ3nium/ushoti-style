@@ -6,7 +6,22 @@ const CATEGORY_PAGES = {
   sneakers: { name: 'Sneakers', page: 'sneakers.html', kicker: 'Footwear' },
   kids:     { name: 'Kids Sneakers', page: 'kids.html', kicker: 'Kids Footwear' },
   hair:     { name: 'Hair', page: 'hair.html', kicker: 'Hair &amp; Wigs' },
+  clothes:  { name: 'Clothes', page: 'clothes.html', kicker: 'Fashion' },
+  makeup:   { name: 'Makeup', page: 'makeup.html', kicker: 'Beauty' },
+  handbags: { name: 'Handbags', page: 'handbags.html', kicker: 'Accessories' },
 };
+const SHOES = ['sneakers', 'kids'];
+
+// Makeup comes in shades; everything else in colours
+const colourWord = p => (p.category === 'makeup' ? 'shade' : 'colour');
+const capitalise = s => s[0].toUpperCase() + s.slice(1);
+
+// What the shopper still has to pick, e.g. "Select a size and colour"
+function selectPrompt(p) {
+  if (p.category === 'hair') return 'Select a length';
+  const needs = [(p.options.sizes || []).length && 'size', (p.options.colours || []).length > 1 && colourWord(p)].filter(Boolean);
+  return needs.length ? `Select a ${needs.join(' and ')}` : '';
+}
 
 const pageEl = document.getElementById('product-page');
 const productId = new URLSearchParams(location.search).get('id') || '';
@@ -101,20 +116,25 @@ function optionsHtml(p) {
         </div>
       </div>`;
   }
+  // Sneakers always have both; clothes, makeup and handbags only show what the admin added
   const colours = p.options.colours || [];
+  const sizes = p.options.sizes || [];
+  const word = capitalise(colourWord(p));
   return `
+    ${colours.length ? `
     <div class="pdp-option">
-      <div class="pdp-option-label">Colour: <span class="pdp-colour-name">${colours.length === 1 ? escapeHtml(colours[0].name) : 'choose one'}</span></div>
-      <div class="pdp-colours" role="group" aria-label="Colour">
+      <div class="pdp-option-label">${word}: <span class="pdp-colour-name">${colours.length === 1 ? escapeHtml(colours[0].name) : 'choose one'}</span></div>
+      <div class="pdp-colours" role="group" aria-label="${word}">
         ${colours.map(c => `<button type="button" class="colour-swatch" data-colour="${escapeHtml(c.hex)}" style="background:${escapeHtml(c.hex)};" title="${escapeHtml(c.name)}" aria-label="${escapeHtml(c.name)}" aria-pressed="false"></button>`).join('')}
       </div>
-    </div>
+    </div>` : ''}
+    ${sizes.length ? `
     <div class="pdp-option">
-      <div class="pdp-option-label">Size (SA)</div>
+      <div class="pdp-option-label">${SHOES.includes(p.category) ? 'Size (SA)' : 'Size'}</div>
       <div class="pdp-sizes" role="group" aria-label="Size">
-        ${(p.options.sizes || []).map(s => `<button type="button" class="pdp-size" data-size="${s}" aria-pressed="false">${s}</button>`).join('')}
+        ${sizes.map(s => `<button type="button" class="pdp-size" data-size="${escapeHtml(s)}" aria-pressed="false">${escapeHtml(s)}</button>`).join('')}
       </div>
-    </div>`;
+    </div>` : ''}`;
 }
 
 function detailsHtml(p) {
@@ -166,7 +186,7 @@ function renderProduct(p) {
   const hair = p.category === 'hair';
   document.title = `${p.name} | Ushoti Style`;
   setSearchInfo(p);
-  document.querySelector(`.nav-links a[href="${hair ? 'hair.html' : 'sneakers.html'}"]`)?.classList.add('active');
+  document.querySelector(`.nav-links a[href="${p.category === 'kids' ? 'sneakers.html' : cat.page}"]`)?.classList.add('active');
 
   pageEl.innerHTML = `
     <div class="pdp-breadcrumb" role="navigation" aria-label="Breadcrumb">
@@ -182,8 +202,8 @@ function renderProduct(p) {
         <div class="pdp-price">${priceHtml(p)}</div>
         ${comboNoteHtml(p, { details: true })}
         ${optionsHtml(p)}
-        <p class="pdp-selection" id="pdp-selection" aria-live="polite">${hair ? 'Select a length' : 'Select a size and colour'}</p>
-        <button type="button" class="pdp-add" id="pdp-add" disabled>Add to Cart</button>
+        <p class="pdp-selection" id="pdp-selection" aria-live="polite">${selectPrompt(p)}</p>
+        <button type="button" class="pdp-add" id="pdp-add"${selectPrompt(p) ? ' disabled' : ''}>Add to Cart</button>
         <a href="cart.html" class="pdp-view-cart">View cart</a>
         ${detailsHtml(p)}
       </div>
@@ -191,7 +211,7 @@ function renderProduct(p) {
 
   const showPhoto = bindGallery(p);
   if (hair) bindHairOptions(p);
-  else bindSneakerOptions(p, showPhoto);
+  else bindSizeColourOptions(p, showPhoto);
 }
 
 function selectButton(buttons, btn) {
@@ -201,8 +221,10 @@ function selectButton(buttons, btn) {
   });
 }
 
-function bindSneakerOptions(p, showPhoto) {
+// Sneakers, clothes, makeup and handbags: a size and/or a colour, whichever the product has
+function bindSizeColourOptions(p, showPhoto) {
   const colours = p.options.colours || [];
+  const word = colourWord(p);
   const sizeBtns = [...pageEl.querySelectorAll('.pdp-size')];
   const swatches = [...pageEl.querySelectorAll('.colour-swatch')];
   const info = document.getElementById('pdp-selection');
@@ -212,12 +234,16 @@ function bindSneakerOptions(p, showPhoto) {
   let size = null;
   let colour = null;
 
+  const needSize = sizeBtns.length > 0;
+  const needColour = swatches.length > 0;
+
   const update = () => {
-    addBtn.disabled = !(size && colour);
-    info.textContent = size && colour ? `Size ${size} · ${colourName(colour)}`
-      : size ? `Size ${size} selected — pick a colour`
-      : colour ? `${colourName(colour)} selected — pick a size`
-      : 'Select a size and colour';
+    const missing = [needSize && !size && 'size', needColour && !colour && word].filter(Boolean);
+    const chosen = [size && `Size ${size}`, colour && colourName(colour)].filter(Boolean).join(' · ');
+    addBtn.disabled = missing.length > 0;
+    info.textContent = !missing.length ? chosen
+      : chosen ? `${chosen} selected — pick a ${missing.join(' and ')}`
+      : `Select a ${missing.join(' and ')}`;
   };
 
   sizeBtns.forEach(btn => btn.addEventListener('click', () => {
@@ -236,7 +262,10 @@ function bindSneakerOptions(p, showPhoto) {
   if (swatches.length === 1) swatches[0].click(); // nothing to choose
 
   addBtn.addEventListener('click', () => {
-    addToCart(`${p.id}-${size}-${colour}`, `${p.name} (Size ${size}, ${colourName(colour)})`, p.price, sizedImage(colourOf(colour).image || p.image, 80, 80));
+    // The id is product-size-colour; either part is blank when the product doesn't have it
+    const label = [size && `Size ${size}`, colour && colourName(colour)].filter(Boolean).join(', ');
+    addToCart(`${p.id}-${size || ''}-${colour || ''}`, label ? `${p.name} (${label})` : p.name, p.price,
+      sizedImage(colourOf(colour).image || p.image, 80, 80));
   });
 }
 

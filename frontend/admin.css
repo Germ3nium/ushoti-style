@@ -481,3 +481,6 @@ td > .admin-pill:first-child,
 .admin-deal-head { font-size: 0.75rem; color: var(--text-muted); margin: 0.75rem 0 0.35rem; }
 .admin-deal-row input, .admin-deal-row select { width: 100%; min-width: 0; }
 .admin-settings-card .admin-hint + h3 { margin-top: 1.5rem; }
+
+/* These have display rules of their own, so [hidden] needs help */
+.admin-check[hidden], .admin-hint[hidden] { display: none; }

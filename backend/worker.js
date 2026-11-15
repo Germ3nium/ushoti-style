@@ -45,7 +45,7 @@ const MAX_STORIES = 2;
 const MAX_STORY_FACTS = 4;
 // Home page slideshow. Buttons may only lead to shop pages or home page sections.
 const MAX_SLIDES = 6;
-const SLIDE_LINKS = ['sneakers.html', 'kids.html', 'hair.html', 'sale.html', 'products.html', '#collections', '#featured-section'];
+const SLIDE_LINKS = ['sneakers.html', 'kids.html', 'hair.html', 'clothes.html', 'makeup.html', 'handbags.html', 'sale.html', 'products.html', '#collections', '#featured-section'];
 const SLIDE_FOCUS = ['left', 'center', 'right'];
 const DEFAULT_SLIDES = [
   {
@@ -101,8 +101,12 @@ const DEFAULT_STORIES = [
     ],
   },
 ];
-const CATEGORIES   = ['sneakers', 'kids', 'hair'];
-const ID_PREFIXES  = { sneakers: 'snk', kids: 'kid', hair: 'hr' };
+const CATEGORIES   = ['sneakers', 'kids', 'hair', 'clothes', 'makeup', 'handbags'];
+const ID_PREFIXES  = { sneakers: 'snk', kids: 'kid', hair: 'hr', clothes: 'clo', makeup: 'mku', handbags: 'bag' };
+// Sneakers need a size and a colour. Clothes, makeup and handbags have sizes and
+// colours (shades for makeup) only if the admin adds them: sizes are text like S, M, L.
+const SHOE_CATEGORIES = ['sneakers', 'kids'];
+const MAX_TEXT_SIZES = 20;
 const FULFILMENT   = ['NEW', 'PROCESSING', 'SHIPPED', 'DELIVERED', 'CANCELLED'];
 const IMAGE_TYPES  = ['image/jpeg', 'image/png', 'image/webp'];
 const MAX_IMAGE_BYTES = 1500000; // D1 rows top out at 2 MB
@@ -649,11 +653,17 @@ async function priceCartItems(cartItems, env) {
 
     let option;
     let price = onSale(p) ? p.sale_price : p.price;
-    if (p.category !== 'hair') { // sneakers and kids sneakers
-      const size   = Number(rest[0]);
-      const colour = (p.options.colours || []).find(c => c.hex.toLowerCase() === rest.slice(1).join('-').toLowerCase());
-      if (!(p.options.sizes || []).includes(size) || !colour) return { error: `Please re-select options for ${p.name}` };
-      option = `Size ${size}, ${colour.name}`;
+    if (p.category !== 'hair') { // id is product-size-colour; size or colour is blank when the product has none
+      const sizes   = p.options.sizes || [];
+      const colours = p.options.colours || [];
+      const sizeText = rest[0] || '';
+      const hex      = rest.slice(1).join('-').toLowerCase();
+      const size   = sizes.find(s => String(s) === sizeText);
+      const colour = colours.find(c => c.hex.toLowerCase() === hex);
+      const sizeOk   = sizes.length ? size !== undefined : !sizeText;
+      const colourOk = colours.length ? !!colour : !hex;
+      if (!sizeOk || !colourOk) return { error: `Please re-select options for ${p.name}` };
+      option = [size !== undefined ? `Size ${size}` : '', colour ? colour.name : ''].filter(Boolean).join(', ');
     } else {
       const length = parseInt(rest[0], 10);
       if (!(p.options.lengths || []).includes(length)) return { error: `Please re-select options for ${p.name}` };
@@ -662,7 +672,7 @@ async function priceCartItems(cartItems, env) {
       if (variant) price = variantPrice(variant);
     }
 
-    priced.push({ product_id: p.id, name: p.name, option, price, qty, ...(p.category !== 'hair' && p.options.combo ? { combo: p.category } : {}) });
+    priced.push({ product_id: p.id, name: p.name, option, price, qty, ...(SHOE_CATEGORIES.includes(p.category) && p.options.combo ? { combo: p.category } : {}) });
   }
   return priced;
 }
@@ -908,7 +918,7 @@ async function handleGetImage(id, env, cors) {
 
 function validateProduct(body) {
   const category = String(body.category || '');
-  if (!CATEGORIES.includes(category)) return { error: 'Category must be sneakers, kids or hair' };
+  if (!CATEGORIES.includes(category)) return { error: 'Please choose a category' };
 
   const name = String(body.name || '').trim();
   if (!name) return { error: 'Name is required' };
@@ -939,9 +949,11 @@ function validateProduct(body) {
   const image = images[0];
 
   let options;
-  if (category !== 'hair') { // sneakers and kids sneakers
+  if (category !== 'hair') { // sneakers, kids sneakers, clothes, makeup and handbags
+    const shoes = SHOE_CATEGORIES.includes(category);
     // Kids sizes run 10-13 then start again at 1, so keep the order the admin typed
-    const sizes = toNumberList(opts.sizes, { sorted: category !== 'kids' });
+    const sizes = shoes ? toNumberList(opts.sizes, { sorted: category !== 'kids' }) : toTextList(opts.sizes);
+    if (sizes.error) return sizes;
     const colours = (Array.isArray(opts.colours) ? opts.colours : [])
       .map(c => ({
         name: String(c.name || '').trim(),
@@ -950,9 +962,9 @@ function validateProduct(body) {
         ...(images.includes(c.image) ? { image: c.image } : {}),
       }))
       .filter(c => c.name && /^#[0-9a-f]{6}$/.test(c.hex));
-    if (!sizes.length)   return { error: 'Add at least one size' };
-    if (!colours.length) return { error: 'Add at least one colour' };
-    options = { sizes, colours, ...(opts.combo === true ? { combo: true } : {}) };
+    if (shoes && !sizes.length)   return { error: 'Add at least one size' };
+    if (shoes && !colours.length) return { error: 'Add at least one colour' };
+    options = { sizes, colours, ...(shoes && opts.combo === true ? { combo: true } : {}) };
   } else if (variants) {
     options = { lengths: variants.map(v => v.length), variants };
   } else {
@@ -1037,6 +1049,16 @@ function safeJson(text, fallback) {
   try { return JSON.parse(text); } catch { return fallback; }
 }
 
+// Clothing sizes such as "S, M, L, XL" or "32, 34": kept in the order typed
+function toTextList(value) {
+  const list = Array.isArray(value) ? value : String(value || '').split(',');
+  const sizes = [...new Set(list.map(v => String(v).trim()).filter(Boolean))];
+  if (sizes.length > MAX_TEXT_SIZES) return { error: `Add at most ${MAX_TEXT_SIZES} sizes` };
+  // A dash would break the cart's item id, which is product-size-colour
+  if (!sizes.every(s => /^[\w ./+]{1,12}$/.test(s))) return { error: 'Sizes can use letters, numbers, spaces, / and . (up to 12 characters each)' };
+  return sizes;
+}
+
 function toNumberList(value, { sorted = true } = {}) {
   const list = Array.isArray(value) ? value : String(value || '').split(',');
   const numbers = [...new Set(list.map(Number).filter(n => n > 0))];
@@ -1085,7 +1107,7 @@ async function sendOrderEmails(orderId, env) {
       text: [
         `Hi ${o.name_first}, thank you for your order. Your payment has been received.`,
         `Order #${number}`,
-        ...items.map(i => `${i.qty} x ${i.name} (${i.option}): ${emailRand(i.price * i.qty)}`),
+        ...items.map(i => `${i.qty} x ${i.name}${i.option ? ` (${i.option})` : ''}: ${emailRand(i.price * i.qty)}`),
         ...(discount > 0 ? [`Combo deal: -${emailRand(discount)}`] : []),
         `Delivery: ${emailRand(o.shipping)}`,
         `Total paid: ${emailRand(o.total)}`,
@@ -1101,7 +1123,7 @@ async function sendOrderEmails(orderId, env) {
         subject: `New paid order #${number}: ${emailRand(o.total)}`,
         text: [
           `${o.name_first} ${o.name_last} paid ${emailRand(o.total)}.`,
-          ...items.map(i => `${i.qty} x ${i.name} (${i.option})`),
+          ...items.map(i => `${i.qty} x ${i.name}${i.option ? ` (${i.option})` : ''}`),
           `Deliver to: ${address.join(', ')}`,
           `Phone: ${o.phone || 'not given'}`,
           `Email: ${o.email}`,

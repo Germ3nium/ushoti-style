@@ -1101,6 +1101,14 @@ body > *:not(#particles-canvas):not(.modal-overlay):not(#toast):not(.sidebar-ove
   filter: brightness(0.5);
 }
 
+/* Clothes, makeup and handbags: as many across as are showing */
+.category-grid-more {
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  margin-top: 1.5rem;
+}
+.category-grid-more:not(:has(.category-card-img:not([hidden]))) { display: none; }
+.category-card-img[hidden] { display: none; }
+
 .category-card-img-content {
   position: absolute;
   inset: 0;
@@ -1991,6 +1999,12 @@ footer {
 }
 
 /* ── RESPONSIVE ──────────────────────────────────────────────── */
+/* Clothes, Makeup and Handbags only fit in the top bar on wide screens;
+   smaller screens reach them from the ☰ menu */
+@media (max-width: 1179px) {
+  .nav-links a.nav-wide-only { display: none; }
+}
+
 @media (max-width: 960px) {
   .testimonials-grid { grid-template-columns: 1fr; }
 }

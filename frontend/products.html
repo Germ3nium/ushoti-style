@@ -4,12 +4,12 @@
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Collections | Ushoti Style</title>
-  <meta name="description" content="Browse every Ushoti Style collection: sneakers, kids sneakers, hair and wigs, all delivered across South Africa."/>
+  <meta name="description" content="Browse every Ushoti Style collection: sneakers, kids sneakers, hair and wigs, clothes, makeup and handbags, all delivered across South Africa."/>
   <link rel="canonical" href="https://ushotistyle.co.za/products"/>
   <meta property="og:site_name" content="Ushoti Style"/>
   <meta property="og:type" content="website"/>
   <meta property="og:title" content="Collections | Ushoti Style"/>
-  <meta property="og:description" content="Browse every Ushoti Style collection: sneakers, kids sneakers, hair and wigs, all delivered across South Africa."/>
+  <meta property="og:description" content="Browse every Ushoti Style collection: sneakers, kids sneakers, hair and wigs, clothes, makeup and handbags, all delivered across South Africa."/>
   <meta property="og:url" content="https://ushotistyle.co.za/products"/>
   <meta property="og:image" content="https://ushotistyle.co.za/images/collection-sneakers.jpg"/>
   <link rel="stylesheet" href="style.css"/>
@@ -45,6 +45,17 @@
           <a href="hair.html" class="promo">On Sale</a>
         </div>
       </div>
+      <div class="sidebar-section">
+        <button class="sidebar-section-toggle" onclick="toggleSidebarSection(this)">
+          Fashion &amp; Beauty
+          <svg viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"/></svg>
+        </button>
+        <div class="sidebar-links">
+          <a href="clothes.html">Clothes</a>
+          <a href="makeup.html">Makeup</a>
+          <a href="handbags.html">Handbags</a>
+        </div>
+      </div>
     </div>
   </div>
 
@@ -59,6 +70,9 @@
       <a href="index.html" class="nav-hide-mobile">Home</a>
       <a href="sneakers.html">Sneakers</a>
       <a href="hair.html">Hair</a>
+      <a href="clothes.html" class="nav-wide-only">Clothes</a>
+      <a href="makeup.html" class="nav-wide-only">Makeup</a>
+      <a href="handbags.html" class="nav-wide-only">Handbags</a>
       <a href="cart.html" class="cart-link">
         <svg viewBox="0 0 24 24"><path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 01-8 0"/></svg>
         <span>Cart</span>
@@ -92,19 +106,50 @@
       </div>
 
     </div>
+    <!-- Clothes, makeup and handbags: each card shows once that category has a product,
+         using the first product's photo (app.js fillCategoryCovers) -->
+    <div class="category-grid category-grid-more">
+      <div class="category-card-img" data-category-cover="clothes" hidden>
+        <img src="" alt="Clothes at Ushoti Style"/>
+        <div class="category-card-img-content">
+          <h3>Clothes</h3>
+          <p>Everyday and statement pieces &mdash; dressed for every moment.</p>
+          <a href="clothes.html" class="btn">View Collection</a>
+        </div>
+      </div>
+      <div class="category-card-img" data-category-cover="makeup" hidden>
+        <img src="" alt="Makeup at Ushoti Style"/>
+        <div class="category-card-img-content">
+          <h3>Makeup</h3>
+          <p>Beauty essentials to finish every look.</p>
+          <a href="makeup.html" class="btn">View Collection</a>
+        </div>
+      </div>
+      <div class="category-card-img" data-category-cover="handbags" hidden>
+        <img src="" alt="Handbags at Ushoti Style"/>
+        <div class="category-card-img-content">
+          <h3>Handbags</h3>
+          <p>Bags for every day and every occasion.</p>
+          <a href="handbags.html" class="btn">View Collection</a>
+        </div>
+      </div>
+    </div>
   </div>
 
   <footer>
     <div class="footer-inner">
       <div class="footer-brand">
         <a href="index.html" class="logo">Ushoti Style</a>
-        <p>Premium sneakers and hair, delivered with care across South Africa. Style is not a luxury — it is a standard.</p>
+        <p>Premium sneakers, hair, clothes, makeup and handbags, delivered with care across South Africa. Style is not a luxury — it is a standard.</p>
       </div>
       <div class="footer-col">
         <h5>Shop</h5>
         <a href="sneakers.html">Sneakers</a>
         <a href="kids.html">Kids Sneakers</a>
         <a href="hair.html">Hair</a>
+        <a href="clothes.html">Clothes</a>
+        <a href="makeup.html">Makeup</a>
+        <a href="handbags.html">Handbags</a>
         <a href="sale.html">On Sale</a>
         <a href="cart.html">My Cart</a>
       </div>
