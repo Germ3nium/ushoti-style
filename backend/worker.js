@@ -1213,7 +1213,9 @@ async function sendOrderEmails(orderId, env) {
   }
 }
 
-// EFT order placed: tell the customer how to pay, and let the shop know one is coming
+// EFT order placed: tell the customer how to pay, and let the shop know one is coming.
+// The customer's email uses the Resend template named in RESEND_EFT_TEMPLATE when it's set
+// (so it can be edited on resend.com), and the built-in design otherwise or if the template fails.
 async function sendEftOrderEmails(orderId, env) {
   if (!env.RESEND_API_KEY) return; // email isn't set up
   try {
@@ -1222,9 +1224,16 @@ async function sendEftOrderEmails(orderId, env) {
     const number = o.order_ref.slice(0, 8).toUpperCase();
     const bank = (await getSettings(env)).bank_details;
     const receiptUrl = `${env.RETURN_URL}?order=${o.order_ref}`;
-    const jobs = [sendEmail(env, {
+    const address = [o.street, o.city, o.province, o.postal_code].filter(Boolean);
+    const discount = Math.round(o.subtotal + o.shipping - o.total);
+    const itemLine = i => `${i.qty} x ${i.name}${i.option ? ` (${i.option})` : ''}: ${emailRand(i.price * i.qty)}`;
+    const subject = `Your Ushoti Style order #${number}: please pay by EFT`;
+
+    const builtIn = {
       to: o.email,
-      subject: `Your Ushoti Style order #${number}: please pay by EFT`,
+      reply_to: env.ORDER_ALERT_EMAIL,
+      subject,
+      html: eftEmailHtml(o, items, number, receiptUrl, address, discount, bank),
       text: [
         `Hi ${o.name_first}, thank you for your order.`,
         `To complete it, please pay ${emailRand(o.total)} by EFT into this account:`,
@@ -1238,11 +1247,50 @@ async function sendEftOrderEmails(orderId, env) {
         '',
         'Please use the reference so we can match your payment. We start on your order once the money reflects in our account.',
         '',
-        ...items.map(i => `${i.qty} x ${i.name}${i.option ? ` (${i.option})` : ''}: ${emailRand(i.price * i.qty)}`),
+        ...items.map(itemLine),
+        ...(discount > 0 ? [`Combo deal: -${emailRand(discount)}`] : []),
+        `Delivery: ${emailRand(o.shipping)}`,
         `Total to pay: ${emailRand(o.total)}`,
         `Your order: ${receiptUrl}`,
       ].join('\n'),
-    })];
+    };
+
+    const customerEmail = async () => {
+      if (env.RESEND_EFT_TEMPLATE) {
+        try {
+          // Every value is text; blanks become "-" because Resend refuses a template variable left empty
+          const v = value => String(value ?? '').trim() || '-';
+          return await sendEmail(env, {
+            to: o.email,
+            reply_to: env.ORDER_ALERT_EMAIL,
+            subject,
+            template: {
+              id: env.RESEND_EFT_TEMPLATE.trim(),
+              variables: {
+                CUSTOMER_NAME: v(o.name_first),
+                ORDER_NUMBER: v(number),
+                AMOUNT_TO_PAY: v(emailRand(o.total)),
+                ACCOUNT_HOLDER: v(bank.account_holder),
+                BANK: v(bank.bank),
+                ACCOUNT_NUMBER: v(bank.account_number),
+                BRANCH_CODE: v(bank.branch_code),
+                ACCOUNT_TYPE: v(bank.account_type),
+                ITEMS: v(items.map(itemLine).join('\n')),
+                COMBO_DEAL: discount > 0 ? `-${emailRand(discount)}` : 'R0',
+                DELIVERY: v(emailRand(o.shipping)),
+                DELIVERING_TO: v(address.join(', ')),
+                ORDER_LINK: v(receiptUrl),
+              },
+            },
+          });
+        } catch (err) {
+          console.error('EFT email template failed, sending the built-in email instead:', err.message);
+        }
+      }
+      return sendEmail(env, builtIn);
+    };
+
+    const jobs = [customerEmail()];
     if (env.ORDER_ALERT_EMAIL) {
       jobs.push(sendEmail(env, {
         to: env.ORDER_ALERT_EMAIL,
@@ -1281,33 +1329,82 @@ function emailEscape(value) {
   return String(value ?? '').replace(/[&<>"']/g, c => `&#${c.charCodeAt(0)};`);
 }
 
-function orderEmailHtml(o, items, number, receiptUrl, address, discount) {
-  const row = (label, value, style = '') => `
+// Both customer emails share one look: dark header, white card, gold button
+function emailRow(label, value, style = '') {
+  return `
     <tr>
       <td style="padding:10px 0;border-bottom:1px solid #e0d5c0;${style}">${label}</td>
       <td align="right" style="padding:10px 0;border-bottom:1px solid #e0d5c0;white-space:nowrap;${style}">${value}</td>
     </tr>`;
+}
+
+function emailLayout(content) {
   return `<!DOCTYPE html>
 <html><body style="margin:0;padding:24px 12px;background:#faf7f2;font-family:Arial,Helvetica,sans-serif;color:#1a1208;">
   <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:560px;margin:0 auto;background:#ffffff;">
     <tr><td align="center" style="padding:24px;background:#1a1208;font-family:Georgia,serif;font-size:22px;font-weight:bold;letter-spacing:3px;color:#b8922a;">USHOTI STYLE</td></tr>
-    <tr><td style="padding:28px 24px;">
-      <h1 style="margin:0 0 8px;font-family:Georgia,serif;font-size:22px;">Thank you, ${emailEscape(o.name_first)}</h1>
-      <p style="margin:0 0 20px;line-height:1.6;">We've received your payment and we're getting your order ready.</p>
-      <p style="margin:0 0 8px;font-size:13px;color:#6b5f4f;">Order #${number}</p>
-      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="font-size:14px;">
-        ${items.map(i => row(`${i.qty} &times; ${emailEscape(i.name)}<br/><span style="font-size:12px;color:#6b5f4f;">${emailEscape(i.option)}</span>`, emailRand(i.price * i.qty))).join('')}
-        ${discount > 0 ? row('Combo deal', `-${emailRand(discount)}`) : ''}
-        ${row('Delivery', emailRand(o.shipping))}
-        ${row('Total paid', emailRand(o.total), 'font-weight:bold;')}
-      </table>
-      <p style="margin:20px 0 4px;font-size:13px;color:#6b5f4f;">Delivering to</p>
-      <p style="margin:0 0 24px;line-height:1.5;font-size:14px;">${address.map(emailEscape).join('<br/>')}</p>
-      <a href="${emailEscape(receiptUrl)}" style="display:inline-block;padding:12px 24px;background:#b8922a;color:#ffffff;text-decoration:none;font-size:13px;font-weight:bold;letter-spacing:1px;">VIEW YOUR RECEIPT</a>
+    <tr><td style="padding:28px 24px;">${content}
     </td></tr>
     <tr><td align="center" style="padding:16px 24px;font-size:12px;color:#6b5f4f;">Ushoti Style &middot; Proudly South African</td></tr>
   </table>
 </body></html>`;
+}
+
+function emailItemRows(items, discount, o) {
+  return `
+        ${items.map(i => emailRow(`${i.qty} &times; ${emailEscape(i.name)}<br/><span style="font-size:12px;color:#6b5f4f;">${emailEscape(i.option)}</span>`, emailRand(i.price * i.qty))).join('')}
+        ${discount > 0 ? emailRow('Combo deal', `-${emailRand(discount)}`) : ''}
+        ${emailRow('Delivery', emailRand(o.shipping))}`;
+}
+
+function emailButton(url, label) {
+  return `<a href="${emailEscape(url)}" style="display:inline-block;padding:12px 24px;background:#b8922a;color:#ffffff;text-decoration:none;font-size:13px;font-weight:bold;letter-spacing:1px;">${label}</a>`;
+}
+
+function orderEmailHtml(o, items, number, receiptUrl, address, discount) {
+  return emailLayout(`
+      <h1 style="margin:0 0 8px;font-family:Georgia,serif;font-size:22px;">Thank you, ${emailEscape(o.name_first)}</h1>
+      <p style="margin:0 0 20px;line-height:1.6;">We've received your payment and we're getting your order ready.</p>
+      <p style="margin:0 0 8px;font-size:13px;color:#6b5f4f;">Order #${number}</p>
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="font-size:14px;">
+        ${emailItemRows(items, discount, o)}
+        ${emailRow('Total paid', emailRand(o.total), 'font-weight:bold;')}
+      </table>
+      <p style="margin:20px 0 4px;font-size:13px;color:#6b5f4f;">Delivering to</p>
+      <p style="margin:0 0 24px;line-height:1.5;font-size:14px;">${address.map(emailEscape).join('<br/>')}</p>
+      ${emailButton(receiptUrl, 'VIEW YOUR RECEIPT')}`);
+}
+
+function eftEmailHtml(o, items, number, receiptUrl, address, discount, bank) {
+  const bankRows = [
+    ['Amount to pay', emailRand(o.total)],
+    ['Reference', number],
+    ['Account holder', bank.account_holder],
+    ['Bank', bank.bank],
+    ['Account number', bank.account_number],
+    ['Branch code', bank.branch_code],
+    ['Account type', bank.account_type],
+  ].filter(([, value]) => value)
+    .map(([label, value]) => emailRow(`<span style="color:#6b5f4f;">${label}</span>`, `<strong>${emailEscape(value)}</strong>`))
+    .join('');
+  return emailLayout(`
+      <h1 style="margin:0 0 8px;font-family:Georgia,serif;font-size:22px;">Thank you, ${emailEscape(o.name_first)}</h1>
+      <p style="margin:0 0 20px;line-height:1.6;">Your order is reserved. To complete it, please pay <strong>${emailRand(o.total)}</strong> by EFT into the account below.</p>
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="font-size:14px;border:1px solid #b8922a;">
+        <tr><td style="padding:16px 18px;">
+          <p style="margin:0 0 6px;font-family:Georgia,serif;font-size:17px;font-weight:bold;">Pay by EFT</p>
+          <table role="presentation" width="100%" cellpadding="0" cellspacing="0">${bankRows}</table>
+          <p style="margin:12px 0 0;font-size:12px;line-height:1.6;color:#6b5f4f;">Please use the reference exactly as shown so we can match your payment. We start on your order once the money reflects in our account.</p>
+        </td></tr>
+      </table>
+      <p style="margin:24px 0 8px;font-size:13px;color:#6b5f4f;">Order #${number}</p>
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="font-size:14px;">
+        ${emailItemRows(items, discount, o)}
+        ${emailRow('Total to pay', emailRand(o.total), 'font-weight:bold;')}
+      </table>
+      <p style="margin:20px 0 4px;font-size:13px;color:#6b5f4f;">Delivering to</p>
+      <p style="margin:0 0 24px;line-height:1.5;font-size:14px;">${address.map(emailEscape).join('<br/>')}</p>
+      ${emailButton(receiptUrl, 'VIEW YOUR ORDER')}`);
 }
 
 function sanitize(str) {

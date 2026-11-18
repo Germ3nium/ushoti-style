@@ -19,6 +19,7 @@
 	//   wrangler secret put ADMIN_KEY
 	//   wrangler secret put RESEND_API_KEY     (order emails are skipped without it)
 	//   wrangler secret put ORDER_ALERT_EMAIL  (where new order alerts and buyer replies go)
+	//   wrangler secret put RESEND_EFT_TEMPLATE (optional: the Resend template ID for the EFT email, see email-templates/)
 	"vars": {
 		// Where Paystack sends the customer after paying, or after cancelling.
 		// Paystack's webhook goes to https://ushoti-style-worker.sihlek56.workers.dev/api/paystack-webhook
