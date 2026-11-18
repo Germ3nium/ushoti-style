@@ -4,7 +4,7 @@
 try { localStorage.removeItem('ushoti_cart'); } catch { /* ignore */ }
 
 const ORDER_REF_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
-const STATUS_LABELS = { PAID: 'Paid', PENDING: 'Confirming…', FAILED: 'Not paid' };
+const STATUS_LABELS = { PAID: 'Paid', PENDING: 'Confirming…', FAILED: 'Not paid', AWAITING_EFT: 'Awaiting EFT' };
 
 function receiptOrderRef() {
   const fromLink = new URLSearchParams(location.search).get('order');
@@ -44,7 +44,23 @@ function renderReceipt(o) {
     .filter(Boolean).map(escapeHtml).join('<br>'); // PAXI orders only have a collection point
   $('r-payment-ref').textContent = o.payment_id ? `Paystack reference: ${o.payment_id}` : '';
 
-  if (o.status === 'FAILED') {
+  $('eft-box').hidden = o.status !== 'AWAITING_EFT';
+  if (o.status === 'AWAITING_EFT') {
+    const b = o.bank_details || {};
+    const rows = [
+      ['Amount to pay', formatRand(o.total)],
+      ['Reference', o.order_number],
+      ['Account holder', b.account_holder],
+      ['Bank', b.bank],
+      ['Account number', b.account_number],
+      ['Branch code', b.branch_code],
+      ['Account type', b.account_type],
+    ].filter(([, v]) => v);
+    $('eft-details').innerHTML = rows.map(([k, v]) => `<div><dt>${k}</dt><dd>${escapeHtml(String(v))}</dd></div>`).join('');
+    $('receipt-label').textContent = 'Order Received';
+    $('receipt-heading').textContent = 'Almost Done: Please Pay by EFT';
+    $('receipt-message').textContent = `Your order is reserved. Pay ${formatRand(o.total)} into the account below to complete it. We've also emailed you these details.`;
+  } else if (o.status === 'FAILED') {
     $('receipt-label').textContent = 'Payment Not Completed';
     $('receipt-heading').textContent = 'Payment Unsuccessful';
     $('receipt-message').textContent = 'Your payment did not go through, so you have not been charged. Please try checking out again.';

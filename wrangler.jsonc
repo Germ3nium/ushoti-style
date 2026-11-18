@@ -5,5 +5,17 @@
 	"compatibility_date": "2026-10-01",
 	"assets": {
 		"directory": "./frontend"
+	},
+
+	// Test copy of the shop: https://ushoti-style-staging.sihlek56.workers.dev
+	// Deploy it from this folder with:  npx wrangler deploy --env staging
+	// (pushing to GitHub only updates the live shop, never this one)
+	"env": {
+		"staging": {
+			"name": "ushoti-style-staging",
+			"assets": {
+				"directory": "./frontend"
+			}
+		}
 	}
 }

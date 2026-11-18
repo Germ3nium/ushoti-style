@@ -12,8 +12,8 @@
 //   GET    /api/admin/pin             → whether a PIN has been set
 //   PUT    /api/admin/pin             → set or change the PIN
 //   GET    /api/admin/summary         → sales totals and best sellers
-//   GET    /api/admin/orders          → orders (?status=PAID|PENDING|FAILED|ALL)
-//   PATCH  /api/admin/orders/:id      → update fulfilment status
+//   GET    /api/admin/orders          → orders (?status=PAID|AWAITING_EFT|PENDING|FAILED|ALL)
+//   PATCH  /api/admin/orders/:id      → update fulfilment status, or mark an EFT order paid / cancelled
 //   GET    /api/admin/products        → all products, including hidden ones
 //   POST   /api/admin/products        → create product
 //   PUT    /api/admin/products/:id    → update product
@@ -31,6 +31,10 @@ const EMAIL_FROM = 'Ushoti Style <orders@ushotistyle.co.za>';
 const DEFAULT_SHIPPING_FEE = 80; // used until the admin sets one
 const DEFAULT_PAXI_FEE = 150;
 const MAX_SHIPPING_FEE = 10000;
+// How customers can pay: Paystack (card), EFT (bank transfer to the shop's account), or a choice of both.
+// EFT orders wait as AWAITING_EFT until the admin sees the money and marks them paid.
+const PAYMENT_METHODS = ['paystack', 'eft', 'both'];
+const BANK_FIELDS = ['account_holder', 'bank', 'account_number', 'branch_code', 'account_type'];
 // Combo deals for sneakers ticked "Combo eligible", e.g. two R1100 pairs for R1500.
 // Each deal is for adult sneakers or kids sneakers, and only counts that kind.
 const COMBO_GROUPS = ['sneakers', 'kids'];
@@ -157,7 +161,7 @@ export default {
       }
 
       if (pathname === '/api/sign-payment' && method === 'POST') {
-        return await handleSignPayment(request, env, cors);
+        return await handleSignPayment(request, env, cors, ctx);
       }
 
       if (pathname === '/api/verify-payment' && method === 'POST') {
@@ -183,7 +187,7 @@ export default {
 
         if (resource === 'summary' && method === 'GET')            return await handleSummary(env, cors);
         if (resource === 'orders' && !id && method === 'GET')       return await handleAdminOrders(url, env, cors);
-        if (resource === 'orders' && id && method === 'PATCH')      return await handleUpdateOrder(id, request, env, cors);
+        if (resource === 'orders' && id && method === 'PATCH')      return await handleUpdateOrder(id, request, env, cors, ctx);
         if (resource === 'products' && !id && method === 'GET')     return await handleAdminProducts(env, cors);
         if (resource === 'products' && !id && method === 'POST')    return await handleSaveProduct(null, request, env, cors);
         if (resource === 'products' && id && method === 'PUT')      return await handleSaveProduct(id, request, env, cors);
@@ -260,8 +264,17 @@ async function getSettings(env) {
     banner: Array.isArray(banner) ? banner : DEFAULT_BANNER,
     stories: Array.isArray(stories) ? stories : DEFAULT_STORIES,
     slides: Array.isArray(slides) && slides.length ? slides : DEFAULT_SLIDES,
+    payment_methods: PAYMENT_METHODS.includes(stored.payment_methods) ? stored.payment_methods : 'paystack',
+    bank_details: bankDetails(safeJson(stored.bank_details, {})),
   };
 }
+
+function bankDetails(raw) {
+  return Object.fromEntries(BANK_FIELDS.map(k => [k, String(raw?.[k] || '').trim().slice(0, 60)]));
+}
+
+const eftEnabled = settings => settings.payment_methods !== 'paystack';
+const paystackEnabled = settings => settings.payment_methods !== 'eft';
 
 async function handleGetSettings(env, cors) {
   return json(await getSettings(env), {
@@ -301,6 +314,21 @@ async function handleSaveSettings(request, env, cors) {
     if (!blank && !time) return json({ error: 'Add the Express delivery time, for example 3 to 5 business days' }, cors, 400);
     updates.express_fee = blank ? '' : String(fee);
     updates.express_time = blank ? '' : time;
+  }
+
+  if (body.payment_methods !== undefined || body.bank_details !== undefined) {
+    const current = await getSettings(env);
+    const methods = body.payment_methods !== undefined ? String(body.payment_methods) : current.payment_methods;
+    const bank = body.bank_details !== undefined ? bankDetails(body.bank_details) : current.bank_details;
+    if (!PAYMENT_METHODS.includes(methods)) return json({ error: 'Choose how customers can pay' }, cors, 400);
+    if (bank.account_number && !/^[0-9 ]{5,20}$/.test(bank.account_number)) {
+      return json({ error: 'The account number can only have numbers' }, cors, 400);
+    }
+    if (methods !== 'paystack' && !(bank.account_holder && bank.bank && bank.account_number)) {
+      return json({ error: 'For EFT, add the account holder, bank and account number' }, cors, 400);
+    }
+    updates.payment_methods = methods;
+    updates.bank_details = JSON.stringify(bank);
   }
 
   if (body.combo_deals !== undefined) {
@@ -539,7 +567,7 @@ function validateStories(list) {
 
 // ── Sign Payment ─────────────────────────────────────────────
 // Prices come from the database, never from the browser.
-async function handleSignPayment(request, env, cors) {
+async function handleSignPayment(request, env, cors, ctx) {
   const body = await request.json();
 
   const method = body.delivery_method || 'courier';
@@ -560,6 +588,9 @@ async function handleSignPayment(request, env, cors) {
   const subtotal = items.reduce((s, i) => s + i.price * i.qty, 0);
   const settings = await getSettings(env);
   if (express && settings.express_fee === null) return json({ error: 'Express delivery is not available right now' }, cors, 400);
+  // EFT when the customer chose it, or when it's the only way to pay
+  const eft = settings.payment_methods === 'eft' || (settings.payment_methods === 'both' && body.payment_method === 'eft');
+  if (!eft && !env.PAYSTACK_SECRET_KEY) return json({ error: 'Payments are not set up yet' }, cors, 503);
   const shipping = paxi ? settings.paxi_fee : express ? settings.express_fee : settings.shipping_fee;
   // The order keeps subtotal and total, so the discount is always subtotal + shipping - total
   const discount = comboDiscount(items, settings.combo_deals);
@@ -573,9 +604,9 @@ async function handleSignPayment(request, env, cors) {
       order_ref, status, items, item_name, subtotal, shipping, total,
       name_first, name_last, email, phone, street, city, postal_code, province,
       created_at, updated_at
-    ) VALUES (?, 'PENDING', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `).bind(
-    orderRef, JSON.stringify(items), itemName, subtotal, shipping, total,
+    orderRef, eft ? 'AWAITING_EFT' : 'PENDING', JSON.stringify(items), itemName, subtotal, shipping, total,
     sanitize(body.name_first), sanitize(body.name_last), sanitize(body.email_address),
     sanitize(body.cell_number),
     // The delivery option goes in the address, so admin, receipts and emails all show it
@@ -586,9 +617,15 @@ async function handleSignPayment(request, env, cors) {
     now, now
   ).run();
 
+  // EFT: the order waits for the customer's bank transfer; the success page shows the bank details
+  if (eft) {
+    const order = await env.DB.prepare('SELECT id FROM orders WHERE order_ref = ?').bind(orderRef).first();
+    ctx.waitUntil(sendEftOrderEmails(order.id, env));
+    return json({ order_ref: orderRef, eft: true }, cors);
+  }
+
   // Ask Paystack for a checkout page for this order. The order's ref is the payment's
   // reference, so Paystack's notification and the verify call both lead back to it.
-  if (!env.PAYSTACK_SECRET_KEY) return json({ error: 'Payments are not set up yet' }, cors, 503);
   let checkout;
   try {
     const res = await fetch(`${paystackApi(env)}/transaction/initialize`, {
@@ -634,9 +671,11 @@ async function handleGetReceipt(ref, env, cors) {
     FROM orders WHERE order_ref = ?
   `).bind(ref).first();
   if (!o) return json({ error: 'Order not found' }, cors, 404);
+  const bank = o.status === 'AWAITING_EFT' ? (await getSettings(env)).bank_details : null;
 
   return new Response(JSON.stringify({
     ...o,
+    ...(bank ? { bank_details: bank } : {}),
     order_number: o.order_ref.slice(0, 8).toUpperCase(),
     items: safeJson(o.items, []),
   }), { headers: { 'Content-Type': 'application/json', 'Cache-Control': 'no-store', ...cors } });
@@ -846,7 +885,10 @@ async function handleSummary(env, cors) {
     }
   }
 
+  const waiting = await env.DB.prepare(`SELECT COUNT(*) AS n FROM orders WHERE status = 'AWAITING_EFT'`).first();
+
   return json({
+    awaiting_eft: waiting?.n || 0,
     paid_orders: paid.length,
     revenue,
     average_order: paid.length ? revenue / paid.length : 0,
@@ -869,8 +911,30 @@ async function handleAdminOrders(url, env, cors) {
   return json(results.map(o => ({ ...o, items: safeJson(o.items, []) })), cors);
 }
 
-async function handleUpdateOrder(id, request, env, cors) {
-  const { fulfilment } = await request.json();
+async function handleUpdateOrder(id, request, env, cors, ctx) {
+  const { fulfilment, payment } = await request.json();
+
+  // EFT orders: the admin confirms the money arrived (which emails the customer), or cancels
+  if (payment !== undefined) {
+    const now = new Date().toISOString();
+    const order = await env.DB.prepare('SELECT id, order_ref, total, status FROM orders WHERE id = ?').bind(id).first();
+    if (!order) return json({ error: 'Order not found' }, cors, 404);
+    if (order.status !== 'AWAITING_EFT') return json({ error: 'Only orders awaiting EFT can be changed this way' }, cors, 400);
+    if (payment === 'PAID') {
+      await env.DB.prepare(`
+        UPDATE orders SET status = 'PAID', payment_id = ?, amount_paid = ?, paid_at = ?, updated_at = ?
+        WHERE id = ? AND status = 'AWAITING_EFT'
+      `).bind(`EFT-${order.order_ref.slice(0, 8).toUpperCase()}`, order.total, now, now, order.id).run();
+      ctx.waitUntil(sendOrderEmails(order.id, env));
+    } else if (payment === 'CANCELLED') {
+      await env.DB.prepare(`UPDATE orders SET status = 'FAILED', fulfilment = 'CANCELLED', updated_at = ? WHERE id = ? AND status = 'AWAITING_EFT'`)
+        .bind(now, order.id).run();
+    } else {
+      return json({ error: 'Invalid payment status' }, cors, 400);
+    }
+    return json({ ok: true }, cors);
+  }
+
   if (!FULFILMENT.includes(fulfilment)) return json({ error: 'Invalid status' }, cors, 400);
 
   const result = await env.DB.prepare('UPDATE orders SET fulfilment = ?, updated_at = ? WHERE id = ?')
@@ -1146,6 +1210,57 @@ async function sendOrderEmails(orderId, env) {
     await Promise.all(jobs);
   } catch (e) {
     console.error(`Order email failed for order ${orderId}: ${e.message}`);
+  }
+}
+
+// EFT order placed: tell the customer how to pay, and let the shop know one is coming
+async function sendEftOrderEmails(orderId, env) {
+  if (!env.RESEND_API_KEY) return; // email isn't set up
+  try {
+    const o = await env.DB.prepare('SELECT * FROM orders WHERE id = ?').bind(orderId).first();
+    const items = safeJson(o.items, []);
+    const number = o.order_ref.slice(0, 8).toUpperCase();
+    const bank = (await getSettings(env)).bank_details;
+    const receiptUrl = `${env.RETURN_URL}?order=${o.order_ref}`;
+    const jobs = [sendEmail(env, {
+      to: o.email,
+      subject: `Your Ushoti Style order #${number}: please pay by EFT`,
+      text: [
+        `Hi ${o.name_first}, thank you for your order.`,
+        `To complete it, please pay ${emailRand(o.total)} by EFT into this account:`,
+        '',
+        `Account holder: ${bank.account_holder}`,
+        `Bank: ${bank.bank}`,
+        `Account number: ${bank.account_number}`,
+        ...(bank.branch_code ? [`Branch code: ${bank.branch_code}`] : []),
+        ...(bank.account_type ? [`Account type: ${bank.account_type}`] : []),
+        `Reference: ${number}`,
+        '',
+        'Please use the reference so we can match your payment. We start on your order once the money reflects in our account.',
+        '',
+        ...items.map(i => `${i.qty} x ${i.name}${i.option ? ` (${i.option})` : ''}: ${emailRand(i.price * i.qty)}`),
+        `Total to pay: ${emailRand(o.total)}`,
+        `Your order: ${receiptUrl}`,
+      ].join('\n'),
+    })];
+    if (env.ORDER_ALERT_EMAIL) {
+      jobs.push(sendEmail(env, {
+        to: env.ORDER_ALERT_EMAIL,
+        reply_to: o.email,
+        subject: `New EFT order #${number}: ${emailRand(o.total)} (awaiting payment)`,
+        text: [
+          `${o.name_first} ${o.name_last} placed an order and will pay ${emailRand(o.total)} by EFT with reference ${number}.`,
+          'When the money reflects, open the order in admin and click "Mark as paid".',
+          ...items.map(i => `${i.qty} x ${i.name}${i.option ? ` (${i.option})` : ''}`),
+          `Phone: ${o.phone || 'not given'}`,
+          `Email: ${o.email}`,
+        ].join('\n'),
+      }));
+    }
+    const results = await Promise.allSettled(jobs);
+    results.filter(r => r.status === 'rejected').forEach(r => console.error('EFT order email failed:', r.reason));
+  } catch (err) {
+    console.error('EFT order emails failed:', err);
   }
 }
 

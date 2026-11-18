@@ -5,7 +5,7 @@ const KEY_STORAGE = 'ushoti_admin_key';
 const FULFILMENT_LABELS = {
   NEW: 'New', PROCESSING: 'Processing', SHIPPED: 'Shipped', DELIVERED: 'Delivered', CANCELLED: 'Cancelled'
 };
-const PAYMENT_LABELS = { PAID: 'Paid', PENDING: 'Not paid', FAILED: 'Failed' };
+const PAYMENT_LABELS = { PAID: 'Paid', AWAITING_EFT: 'Awaiting EFT', PENDING: 'Not paid', FAILED: 'Failed' };
 
 let adminKey = readKey();
 let orders = [];
@@ -118,6 +118,13 @@ async function loadSettings() {
   document.getElementById('set-paxi').value = settings.paxi_fee ?? 150;
   document.getElementById('set-express-fee').value = settings.express_fee ?? '';
   document.getElementById('set-express-time').value = settings.express_time || '';
+  document.getElementById('set-payment-methods').value = settings.payment_methods || 'paystack';
+  const bank = settings.bank_details || {};
+  document.getElementById('set-bank-holder').value = bank.account_holder || '';
+  document.getElementById('set-bank-name').value = bank.bank || '';
+  document.getElementById('set-bank-number').value = bank.account_number || '';
+  document.getElementById('set-bank-branch').value = bank.branch_code || '';
+  document.getElementById('set-bank-type').value = bank.account_type || '';
   document.getElementById('set-banner').value = (settings.banner || []).join('\n');
   renderDealRows(settings.combo_deals || []);
 
@@ -426,6 +433,14 @@ document.getElementById('settings-form').addEventListener('submit', async e => {
         paxi_fee: Number(document.getElementById('set-paxi').value),
         express_fee: document.getElementById('set-express-fee').value,
         express_time: document.getElementById('set-express-time').value,
+        payment_methods: document.getElementById('set-payment-methods').value,
+        bank_details: {
+          account_holder: document.getElementById('set-bank-holder').value,
+          bank: document.getElementById('set-bank-name').value,
+          account_number: document.getElementById('set-bank-number').value,
+          branch_code: document.getElementById('set-bank-branch').value,
+          account_type: document.getElementById('set-bank-type').value
+        },
         combo_deals: readDealRows(),
         banner: document.getElementById('set-banner').value.split('\n').map(m => m.trim()).filter(Boolean),
         slides: readSlideEditors(),
@@ -455,7 +470,8 @@ async function loadOverview() {
     ['This month', `${formatRand(s.month_revenue)}`, `${s.month_orders} order${s.month_orders === 1 ? '' : 's'}`],
     ['Paid orders', s.paid_orders],
     ['Average order', formatRand(s.average_order)],
-    ['To ship', s.to_ship, 'New + processing']
+    ['To ship', s.to_ship, 'New + processing'],
+    ...(s.awaiting_eft ? [['Awaiting EFT', s.awaiting_eft, 'Check the bank, then mark paid']] : [])
   ];
   document.getElementById('stats').innerHTML = stats.map(([label, value, note]) => `
     <div class="admin-stat">
@@ -548,7 +564,15 @@ function orderDetailHtml(o) {
         <h4>Contact</h4>
         <p>${o.email ? `<a href="mailto:${escapeHtml(o.email)}">${escapeHtml(o.email)}</a>` : '—'}<br/>${o.phone ? `<a href="tel:${escapeHtml(o.phone)}">${escapeHtml(o.phone)}</a>` : ''}</p>
         <h4>Reference</h4>
-        <p class="admin-mono">${escapeHtml(o.order_ref)}${o.payment_id ? `<br/>Paystack: ${escapeHtml(o.payment_id)}` : ''}</p>
+        <p class="admin-mono">${escapeHtml(o.order_ref)}${o.payment_id
+          ? `<br/>${o.payment_id.startsWith('EFT-') ? 'EFT' : 'Paystack'}: ${escapeHtml(o.payment_id)}` : ''}</p>
+        ${o.status === 'AWAITING_EFT' ? `
+        <h4>EFT payment</h4>
+        <p>Look for <strong>${formatRand(o.total)}</strong> with reference <strong>${escapeHtml(o.order_ref.slice(0, 8).toUpperCase())}</strong>.</p>
+        <div class="admin-eft-actions">
+          <button type="button" class="btn admin-btn-sm" data-eft="PAID" data-id="${o.id}">Mark as paid</button>
+          <button type="button" class="btn btn-ghost admin-btn-sm admin-danger" data-eft="CANCELLED" data-id="${o.id}">Cancel order</button>
+        </div>` : ''}
       </div>
     </div>`;
 }
@@ -567,8 +591,29 @@ function toggleOrderRow(row) {
   row.setAttribute('aria-expanded', String(!detail.hidden));
 }
 
+// EFT orders: confirm the money arrived (emails the customer), or cancel an order that was never paid
+ordersBody.addEventListener('click', async e => {
+  const btn = e.target.closest('[data-eft]');
+  if (!btn) return;
+  const order = orders.find(o => String(o.id) === btn.dataset.id);
+  const paid = btn.dataset.eft === 'PAID';
+  const question = paid
+    ? `Mark order ${order.order_ref.slice(0, 8).toUpperCase()} as paid (${formatRand(order.total)})? The customer will get their confirmation email.`
+    : `Cancel order ${order.order_ref.slice(0, 8).toUpperCase()}? Only do this if the customer isn't going to pay.`;
+  if (!confirm(question)) return;
+  btn.disabled = true;
+  try {
+    await api(`orders/${order.id}`, { method: 'PATCH', body: JSON.stringify({ payment: btn.dataset.eft }) });
+    showToast(paid ? 'Order marked as paid' : 'Order cancelled');
+    await loadOrders();
+  } catch (err) {
+    btn.disabled = false;
+    showToast(`Couldn't update: ${err.message}`);
+  }
+});
+
 ordersBody.addEventListener('click', e => {
-  if (e.target.closest('select, a')) return;
+  if (e.target.closest('select, a, button')) return;
   const row = e.target.closest('.admin-order-row');
   if (row) toggleOrderRow(row);
 });

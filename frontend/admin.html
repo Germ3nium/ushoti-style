@@ -70,6 +70,7 @@
           <label>Payment
             <select id="order-payment-filter">
               <option value="PAID">Paid</option>
+              <option value="AWAITING_EFT">Awaiting EFT</option>
               <option value="PENDING">Not paid yet</option>
               <option value="FAILED">Failed / cancelled</option>
               <option value="ALL">All</option>
@@ -134,6 +135,41 @@
           <h2>Settings</h2>
         </div>
         <form id="settings-form" class="admin-card admin-settings-card">
+          <h3>Payments</h3>
+          <div class="form-group">
+            <label for="set-payment-methods">How customers pay</label>
+            <select id="set-payment-methods">
+              <option value="eft">EFT only (bank transfer)</option>
+              <option value="paystack">Card only (Paystack)</option>
+              <option value="both">Customer chooses: card or EFT</option>
+            </select>
+          </div>
+          <p class="admin-muted admin-hint">EFT orders wait as &ldquo;Awaiting EFT&rdquo; on the Orders tab. When the money is in the account, open the order and click &ldquo;Mark as paid&rdquo;; the customer then gets their confirmation email.</p>
+          <div class="form-row">
+            <div class="form-group">
+              <label for="set-bank-holder">Account holder</label>
+              <input type="text" id="set-bank-holder" maxlength="60"/>
+            </div>
+            <div class="form-group">
+              <label for="set-bank-name">Bank</label>
+              <input type="text" id="set-bank-name" maxlength="60" placeholder="e.g. Capitec"/>
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label for="set-bank-number">Account number</label>
+              <input type="text" id="set-bank-number" maxlength="20" inputmode="numeric"/>
+            </div>
+            <div class="form-group">
+              <label for="set-bank-branch">Branch code (optional)</label>
+              <input type="text" id="set-bank-branch" maxlength="20" inputmode="numeric"/>
+            </div>
+          </div>
+          <div class="form-group">
+            <label for="set-bank-type">Account type (optional)</label>
+            <input type="text" id="set-bank-type" maxlength="60" placeholder="e.g. Cheque / Current"/>
+          </div>
+
           <h3>Delivery</h3>
           <div class="form-group">
             <label for="set-shipping">Courier delivery fee (R)</label>

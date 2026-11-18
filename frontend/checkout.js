@@ -24,6 +24,35 @@ document.querySelectorAll('input[name="delivery_method"]').forEach(radio => {
   radio.addEventListener('change', syncDeliveryFields);
 });
 
+// ── How to pay: card (Paystack), EFT, or a choice (admin Settings tab) ──
+let paymentMethods = 'paystack';
+
+function paymentMethod() {
+  if (paymentMethods !== 'both') return paymentMethods;
+  return document.querySelector('input[name="payment_method"]:checked').value;
+}
+
+function payButtonText() {
+  return paymentMethod() === 'eft' ? 'Place Order & Pay by EFT' : 'Pay Securely with Paystack';
+}
+
+function syncPaymentChoice() {
+  document.getElementById('payment-choice').hidden = paymentMethods !== 'both';
+  document.getElementById('pay-btn').textContent = payButtonText();
+  document.getElementById('pay-note-text').textContent = paymentMethod() === 'eft'
+    ? "After you place the order you'll see our bank details. Use your order number as the reference."
+    : 'Secured by Paystack — Cards, EFT & more';
+}
+
+document.querySelectorAll('input[name="payment_method"]').forEach(radio => {
+  radio.addEventListener('change', syncPaymentChoice);
+});
+
+loadSettings().then(settings => {
+  if (['paystack', 'eft', 'both'].includes(settings.payment_methods)) paymentMethods = settings.payment_methods;
+  syncPaymentChoice();
+}).catch(() => { /* card payment stays the default */ });
+
 async function handleCheckout(e) {
   e.preventDefault();
   const btn = document.getElementById('pay-btn');
@@ -49,19 +78,21 @@ async function handleCheckout(e) {
         city:          field('city'),
         postal_code:   field('postal_code'),
         province:      field('province'),
+        payment_method: paymentMethod(),
         items:         cart.map(i => ({ id: i.id, qty: i.qty }))
       })
     });
 
     const data = await res.json().catch(() => ({}));
-    if (!res.ok || !data.payment_url) throw new Error(data.error || 'Could not start payment');
+    if (!res.ok || !(data.payment_url || data.eft)) throw new Error(data.error || 'Could not start payment');
 
     // The success page uses this to show the receipt when Paystack sends the customer back
     try { localStorage.setItem('ushoti_last_order', data.order_ref); } catch { /* ignore */ }
-    window.location.href = data.payment_url; // Paystack's secure checkout page
+    // EFT orders go straight to the order page with the bank details; card payments go to Paystack
+    window.location.href = data.eft ? `success.html?order=${data.order_ref}` : data.payment_url;
 
   } catch (err) {
-    btn.textContent = 'Pay Securely with Paystack';
+    btn.textContent = payButtonText();
     btn.disabled = false;
     alert('Payment error: ' + err.message);
   }

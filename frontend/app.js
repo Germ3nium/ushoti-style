@@ -17,10 +17,24 @@ document.addEventListener('click', e => {
 });
 
 // ── Backend & Products ───────────────────────────────────────
-// Local `wrangler dev` runs the backend on port 8787 ('' = page opened as a file)
+// Local `wrangler dev` runs the backend on port 8787 ('' = page opened as a file).
+// The test copy of the shop (staging) talks to its own backend and database.
+const IS_STAGING = location.hostname.startsWith('ushoti-style-staging.');
 const API_BASE = ['localhost', '127.0.0.1', ''].includes(location.hostname)
   ? 'http://localhost:8787'
-  : 'https://ushoti-style-worker.sihlek56.workers.dev';
+  : IS_STAGING
+    ? 'https://ushoti-style-worker-staging.sihlek56.workers.dev'
+    : 'https://ushoti-style-worker.sihlek56.workers.dev';
+
+// A strip across the top of every page so nobody mistakes the test copy for the real shop
+if (IS_STAGING) {
+  document.addEventListener('DOMContentLoaded', () => {
+    const strip = document.createElement('div');
+    strip.className = 'staging-strip';
+    strip.textContent = 'TEST SITE: orders here are not real';
+    document.body.prepend(strip);
+  });
+}
 
 // Delivery fee and banner messages are set on the admin Settings tab.
 // R80 shows until the real fee loads; the backend always charges its own stored fee.

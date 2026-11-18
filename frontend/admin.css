@@ -182,6 +182,7 @@ td > .admin-pill:first-child,
 .pill-cancelled,
 .pill-pay-failed  { background: #f6e1de; color: #8a2a1f; }
 .pill-pay-pending { background: var(--bg-dark); color: var(--text-muted); }
+.pill-pay-awaiting_eft { background: #fbefd5; color: #8a5a00; }
 
 /* Toolbar */
 .admin-toolbar {
@@ -484,3 +485,6 @@ td > .admin-pill:first-child,
 
 /* These have display rules of their own, so [hidden] needs help */
 .admin-check[hidden], .admin-hint[hidden] { display: none; }
+
+.admin-eft-actions { display: flex; gap: 0.5rem; flex-wrap: wrap; margin-top: 0.6rem; }
+.admin-settings-card .admin-hint + .form-row { margin-top: 1rem; }

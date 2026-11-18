@@ -2473,3 +2473,27 @@ a.product-card:focus-visible { outline: 2px solid var(--gold); outline-offset: 3
 @media (max-width: 380px) {
   .pdp-sizes { grid-template-columns: repeat(4, minmax(0, 1fr)); }
 }
+
+/* ── EFT payment details on the order page ── */
+.eft-box {
+  max-width: 560px;
+  margin: 2rem auto 0;
+  padding: 1.6rem 1.8rem;
+  background: var(--bg-card);
+  border: 1px solid var(--gold);
+  text-align: left;
+}
+.eft-box h3 { font-family: 'Playfair Display', serif; font-size: 1.3rem; margin-bottom: 1rem; }
+.eft-details div {
+  display: flex; justify-content: space-between; gap: 1rem;
+  padding: 0.55rem 0; border-bottom: 1px solid var(--border);
+}
+.eft-details dt { color: var(--text-muted); font-size: 0.85rem; }
+.eft-details dd { font-weight: 600; text-align: right; overflow-wrap: anywhere; }
+.eft-note { font-size: 0.82rem; color: var(--text-muted); margin-top: 1rem; line-height: 1.6; }
+
+/* Test copy of the shop only (see IS_STAGING in app.js) */
+.staging-strip {
+  background: #b3261e; color: #fff; text-align: center;
+  font-size: 0.75rem; font-weight: 700; letter-spacing: 1px; padding: 0.4rem 1rem;
+}
