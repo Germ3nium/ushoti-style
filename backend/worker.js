@@ -4,8 +4,9 @@
 //   GET    /api/settings              → shop settings shoppers need (delivery fee, banner, slideshow, trending sneakers)
 //   GET    /api/images/:id            → product photo uploaded from the admin page
 //   GET    /api/orders/:ref           → receipt for one order (the ref is an unguessable UUID)
-//   POST   /api/sign-payment          → creates a PENDING order, returns signed PayFast fields
-//   POST   /api/notify                → PayFast payment notification (marks order PAID, emails the buyer)
+//   POST   /api/sign-payment          → creates a PENDING order and a Paystack payment, returns its checkout link
+//   POST   /api/verify-payment        → asks Paystack about an order's payment (the success page calls it)
+//   POST   /api/paystack-webhook      → Paystack payment notification (marks order PAID, emails the buyer)
 //   POST   /api/admin/login           → swaps the admin PIN (or the admin key) for a session token
 //   Admin (Authorization: Bearer <session token or ADMIN_KEY>):
 //   GET    /api/admin/pin             → whether a PIN has been set
@@ -20,11 +21,10 @@
 //   POST   /api/admin/images          → upload a product photo (raw image body), returns its url
 //   PUT    /api/admin/settings        → update shop settings (delivery fee, banner, slideshow, trending sneakers)
 
-const PAYFAST_SANDBOX = false; // set to false when going live
-
-const PF_HOST = PAYFAST_SANDBOX
-  ? 'sandbox.payfast.co.za'
-  : 'www.payfast.co.za';
+// Paystack: test or live is decided by which secret key is set (sk_test_... or sk_live_...).
+// PAYSTACK_API_BASE only exists so local tests can point at a stand-in server.
+const PAYSTACK_API = 'https://api.paystack.co';
+const paystackApi = env => env.PAYSTACK_API_BASE || PAYSTACK_API;
 
 const EMAIL_FROM = 'Ushoti Style <orders@ushotistyle.co.za>';
 
@@ -36,7 +36,7 @@ const MAX_SHIPPING_FEE = 10000;
 const COMBO_GROUPS = ['sneakers', 'kids'];
 const MAX_COMBO_DEALS = 20;
 const MAX_COMBO_ITEMS = 6;
-const DEFAULT_BANNER = ['Premium Sneakers', 'Hair Extensions & Wigs', 'Secure PayFast Checkout', 'Nationwide Delivery', 'New Arrivals Weekly'];
+const DEFAULT_BANNER = ['Premium Sneakers', 'Hair Extensions & Wigs', 'Secure Paystack Checkout', 'Nationwide Delivery', 'New Arrivals Weekly'];
 const MAX_BANNER_MESSAGES = 12;
 const MAX_BANNER_LENGTH = 80;
 // Home page "Trending Footwear" stories: a photo beside a sneaker's style and history.
@@ -160,8 +160,12 @@ export default {
         return await handleSignPayment(request, env, cors);
       }
 
-      if (pathname === '/api/notify' && method === 'POST') {
-        return await handleNotify(request, env, cors, ctx);
+      if (pathname === '/api/verify-payment' && method === 'POST') {
+        return await handleVerifyPayment(request, env, cors, ctx);
+      }
+
+      if (pathname === '/api/paystack-webhook' && method === 'POST') {
+        return await handlePaystackWebhook(request, env, cors, ctx);
       }
 
       // ── Admin routes ───────────────────────────────────────
@@ -582,39 +586,44 @@ async function handleSignPayment(request, env, cors) {
     now, now
   ).run();
 
-  // Field order matters — PayFast signs them in this documented order
-  const pfData = {
-    merchant_id:   env.PAYFAST_MERCHANT_ID,
-    merchant_key:  env.PAYFAST_MERCHANT_KEY,
-    return_url:    env.RETURN_URL,
-    cancel_url:    env.CANCEL_URL,
-    notify_url:    env.NOTIFY_URL,
-    name_first:    sanitize(body.name_first),
-    name_last:     sanitize(body.name_last),
-    email_address: sanitize(body.email_address),
-    cell_number:   sanitize(body.cell_number).replace(/\D/g, ''),
-    m_payment_id:  orderRef,
-    amount:        total.toFixed(2),
-    item_name:     sanitize(itemName).slice(0, 100).trim(), // PayFast limit
-  };
+  // Ask Paystack for a checkout page for this order. The order's ref is the payment's
+  // reference, so Paystack's notification and the verify call both lead back to it.
+  if (!env.PAYSTACK_SECRET_KEY) return json({ error: 'Payments are not set up yet' }, cors, 503);
+  let checkout;
+  try {
+    const res = await fetch(`${paystackApi(env)}/transaction/initialize`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${env.PAYSTACK_SECRET_KEY}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        email:        sanitize(body.email_address),
+        amount:       Math.round(total * 100), // Paystack takes cents
+        currency:     'ZAR',
+        reference:    orderRef,
+        callback_url: `${env.RETURN_URL}?order=${orderRef}`,
+        metadata: {
+          order_number: orderRef.slice(0, 8).toUpperCase(),
+          cancel_action: env.CANCEL_URL, // where "Cancel payment" on Paystack's page goes
+          custom_fields: [
+            { display_name: 'Order', variable_name: 'order_number', value: orderRef.slice(0, 8).toUpperCase() },
+            { display_name: 'Items', variable_name: 'items', value: sanitize(itemName).slice(0, 200) },
+          ],
+        },
+      }),
+    });
+    checkout = await res.json().catch(() => ({}));
+    if (!res.ok || !checkout.status || !checkout.data?.authorization_url) throw new Error(checkout.message || `HTTP ${res.status}`);
+  } catch (err) {
+    console.error('Paystack initialize failed:', err.message);
+    await env.DB.prepare(`UPDATE orders SET status = 'FAILED', updated_at = ? WHERE order_ref = ?`)
+      .bind(new Date().toISOString(), orderRef).run();
+    return json({ error: 'We could not start the payment. Please try again in a moment.' }, cors, 502);
+  }
 
-  // Remove empty fields
-  Object.keys(pfData).forEach(k => {
-    if (!pfData[k]) delete pfData[k];
-  });
-
-  const signature = await generateSignature(pfData, env.PAYFAST_PASSPHRASE);
-
-  return json({
-    ...pfData,
-    signature,
-    order_ref: orderRef,
-    payfast_url: `https://${PF_HOST}/eng/process`
-  }, cors);
+  return json({ payment_url: checkout.data.authorization_url, order_ref: orderRef }, cors);
 }
 
 // ── Receipt ──────────────────────────────────────────────────
-// Only someone who has the order's UUID (the buyer, via PayFast's return link) can see it.
+// Only someone who has the order's UUID (the buyer, via Paystack's return link) can see it.
 async function handleGetReceipt(ref, env, cors) {
   if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/.test(ref || '')) {
     return json({ error: 'Order not found' }, cors, 404);
@@ -730,57 +739,83 @@ function comboSaving(unitPrices, deals) {
   return full(counts) - best(counts);
 }
 
-// ── Handle PayFast ITN Notification ─────────────────────────
-async function handleNotify(request, env, cors, ctx) {
+// ── Paystack payments ────────────────────────────────────────
+// Two ways an order gets marked paid, and either is enough:
+//  1. Paystack's webhook, signed with our secret key (arrives even if the buyer closes the tab)
+//  2. The success page asking us to check, which we do by asking Paystack ourselves
+// Both end in applyPaystackResult, which checks the amount and currency.
+
+async function handlePaystackWebhook(request, env, cors, ctx) {
+  if (!env.PAYSTACK_SECRET_KEY) return new Response('NOT_SET_UP', { status: 503, headers: cors });
   const rawBody = await request.text();
-  const params = new URLSearchParams(rawBody);
-  const data = Object.fromEntries(params);
-
-  // 1. Verify signature
-  const receivedSig = data.signature;
-  delete data.signature;
-  const expectedSig = await generateSignature(data, env.PAYFAST_PASSPHRASE);
-
-  if (receivedSig !== expectedSig) {
-    return new Response('INVALID_SIGNATURE', { status: 400, headers: cors });
+  const expected = await hmacSha512Hex(env.PAYSTACK_SECRET_KEY, rawBody);
+  if (!safeEqual(request.headers.get('x-paystack-signature') || '', expected)) {
+    return new Response('INVALID_SIGNATURE', { status: 401, headers: cors });
   }
 
-  // 2. Verify with PayFast server
-  const pfValid = await verifyWithPayFast(rawBody, PF_HOST);
-  if (!pfValid) {
-    return new Response('PAYFAST_VERIFY_FAILED', { status: 400, headers: cors });
+  const event = safeJson(rawBody, {});
+  if (event.event === 'charge.success' && event.data?.reference) {
+    await applyPaystackResult(event.data, env, ctx);
   }
+  return new Response('OK', { status: 200, headers: cors }); // anything else is acknowledged and ignored
+}
 
+async function handleVerifyPayment(request, env, cors, ctx) {
+  const body = await request.json().catch(() => ({}));
+  const ref = String(body.order_ref || '');
+  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/.test(ref)) return json({ error: 'Order not found' }, cors, 404);
+  const order = await env.DB.prepare('SELECT status FROM orders WHERE order_ref = ?').bind(ref).first();
+  if (!order) return json({ error: 'Order not found' }, cors, 404);
+  if (order.status !== 'PENDING' || !env.PAYSTACK_SECRET_KEY) return json({ status: order.status }, cors);
+
+  try {
+    const res = await fetch(`${paystackApi(env)}/transaction/verify/${encodeURIComponent(ref)}`, {
+      headers: { Authorization: `Bearer ${env.PAYSTACK_SECRET_KEY}` },
+    });
+    const result = await res.json().catch(() => ({}));
+    if (res.ok && result.status && result.data) await applyPaystackResult(result.data, env, ctx);
+  } catch (err) {
+    console.error('Paystack verify failed:', err.message); // the webhook can still mark it paid
+  }
+  const now = await env.DB.prepare('SELECT status FROM orders WHERE order_ref = ?').bind(ref).first();
+  return json({ status: now.status }, cors);
+}
+
+// tx is Paystack's transaction: { reference, status, amount (cents), currency, id }
+async function applyPaystackResult(tx, env, ctx) {
   const order = await env.DB.prepare('SELECT id, total FROM orders WHERE order_ref = ?')
-    .bind(data.m_payment_id || '').first();
-  if (!order) {
-    return new Response('UNKNOWN_ORDER', { status: 200, headers: cors });
-  }
-
+    .bind(String(tx.reference || '')).first();
+  if (!order) return;
   const now = new Date().toISOString();
 
-  if (data.payment_status !== 'COMPLETE') {
+  if (tx.status === 'failed') {
     await env.DB.prepare(`UPDATE orders SET status = 'FAILED', updated_at = ? WHERE id = ? AND status = 'PENDING'`)
       .bind(now, order.id).run();
-    return new Response('OK', { status: 200, headers: cors });
+    return;
+  }
+  if (tx.status !== 'success') return; // still in progress or abandoned: leave it pending
+
+  // Make sure the amount paid matches what we charged
+  if (tx.currency !== 'ZAR' || Number(tx.amount) !== Math.round(order.total * 100)) {
+    console.error(`Paystack amount mismatch on order ${order.id}: ${tx.amount} ${tx.currency}`);
+    return;
   }
 
-  // 3. Make sure the amount paid matches what we charged
-  const paid = parseFloat(data.amount_gross);
-  if (Math.abs(paid - order.total) > 0.01) {
-    return new Response('AMOUNT_MISMATCH', { status: 400, headers: cors });
-  }
-
-  // 4. Mark the order as paid (PayFast can repeat a notification, so skip orders already paid)
+  // Mark the order as paid (the webhook and the verify call can both arrive, so skip orders already paid)
   const update = await env.DB.prepare(`
     UPDATE orders SET status = 'PAID', payment_id = ?, amount_paid = ?, paid_at = ?, updated_at = ?
     WHERE id = ? AND status != 'PAID'
-  `).bind(data.pf_payment_id, paid, now, now, order.id).run();
+  `).bind(String(tx.id || tx.reference), Number(tx.amount) / 100, now, now, order.id).run();
 
-  // 5. Email the buyer and the shop once, after answering PayFast so it isn't kept waiting
+  // Email the buyer and the shop once, without keeping Paystack waiting
   if (update.meta.changes) ctx.waitUntil(sendOrderEmails(order.id, env));
+}
 
-  return new Response('OK', { status: 200, headers: cors });
+async function hmacSha512Hex(secret, text) {
+  const enc = new TextEncoder();
+  const key = await crypto.subtle.importKey('raw', enc.encode(secret), { name: 'HMAC', hash: 'SHA-512' }, false, ['sign']);
+  const sig = await crypto.subtle.sign('HMAC', key, enc.encode(text));
+  return [...new Uint8Array(sig)].map(b => b.toString(16).padStart(2, '0')).join('');
 }
 
 // ── Admin: Summary ───────────────────────────────────────────
@@ -1065,28 +1100,6 @@ function toNumberList(value, { sorted = true } = {}) {
   return sorted ? numbers.sort((a, b) => a - b) : numbers;
 }
 
-// Generate PayFast MD5 signature
-// PayFast signs fields in the order they're sent (its documented attribute
-// order), NOT alphabetically — so keep the object's insertion order.
-async function generateSignature(data, passphrase) {
-  const ordered = Object.keys(data)
-    .filter(k => k !== 'signature')
-    .map(k => `${k}=${pfEncode(String(data[k]).trim())}`)
-    .join('&');
-
-  const str = passphrase ? `${ordered}&passphrase=${pfEncode(passphrase.trim())}` : ordered;
-
-  // crypto.subtle doesn't support MD5 natively — use manual MD5
-  return md5(str);
-}
-
-// Matches PHP's urlencode(), which PayFast uses to build its signature
-function pfEncode(value) {
-  return encodeURIComponent(value)
-    .replace(/[!'()*~]/g, c => '%' + c.charCodeAt(0).toString(16).toUpperCase())
-    .replace(/%20/g, '+');
-}
-
 // ── Order emails ─────────────────────────────────────────────
 // A failed email is only logged: the order is already paid and shows in admin.
 async function sendOrderEmails(orderId, env) {
@@ -1182,90 +1195,7 @@ function orderEmailHtml(o, items, number, receiptUrl, address, discount) {
 </body></html>`;
 }
 
-// Verify payment with PayFast server
-async function verifyWithPayFast(rawBody, host) {
-  try {
-    const res = await fetch(`https://${host}/eng/query/validate`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      body: rawBody
-    });
-    const text = await res.text();
-    return text.trim() === 'VALID';
-  } catch {
-    return false;
-  }
-}
-
 function sanitize(str) {
   return String(str || '').replace(/[<>"']/g, '').trim();
 }
 
-// MD5 implementation (required since crypto.subtle doesn't support MD5)
-function md5(str) {
-  function safeAdd(x, y) {
-    const lsw = (x & 0xffff) + (y & 0xffff);
-    return (((x >> 16) + (y >> 16) + (lsw >> 16)) << 16) | (lsw & 0xffff);
-  }
-  function bitRotateLeft(num, cnt) { return (num << cnt) | (num >>> (32 - cnt)); }
-  function md5cmn(q, a, b, x, s, t) { return safeAdd(bitRotateLeft(safeAdd(safeAdd(a, q), safeAdd(x, t)), s), b); }
-  function md5ff(a, b, c, d, x, s, t) { return md5cmn((b & c) | (~b & d), a, b, x, s, t); }
-  function md5gg(a, b, c, d, x, s, t) { return md5cmn((b & d) | (c & ~d), a, b, x, s, t); }
-  function md5hh(a, b, c, d, x, s, t) { return md5cmn(b ^ c ^ d, a, b, x, s, t); }
-  function md5ii(a, b, c, d, x, s, t) { return md5cmn(c ^ (b | ~d), a, b, x, s, t); }
-
-  const utf8 = unescape(encodeURIComponent(str));
-  const bytes = Array.from(utf8).map(c => c.charCodeAt(0));
-  bytes.push(0x80);
-  while (bytes.length % 64 !== 56) bytes.push(0);
-  const bitLen = (utf8.length * 8);
-  bytes.push(bitLen & 0xff, (bitLen >> 8) & 0xff, (bitLen >> 16) & 0xff, (bitLen >> 24) & 0xff, 0, 0, 0, 0);
-
-  let a = 0x67452301, b = 0xefcdab89, c = 0x98badcfe, d = 0x10325476;
-
-  for (let i = 0; i < bytes.length; i += 64) {
-    const M = [];
-    for (let j = 0; j < 16; j++) {
-      M[j] = bytes[i + j*4] | (bytes[i + j*4+1] << 8) | (bytes[i + j*4+2] << 16) | (bytes[i + j*4+3] << 24);
-    }
-    let [aa, bb, cc, dd] = [a, b, c, d];
-    a = md5ff(a,b,c,d,M[0],7,-680876936);   d = md5ff(d,a,b,c,M[1],12,-389564586);
-    c = md5ff(c,d,a,b,M[2],17,606105819);   b = md5ff(b,c,d,a,M[3],22,-1044525330);
-    a = md5ff(a,b,c,d,M[4],7,-176418897);   d = md5ff(d,a,b,c,M[5],12,1200080426);
-    c = md5ff(c,d,a,b,M[6],17,-1473231341); b = md5ff(b,c,d,a,M[7],22,-45705983);
-    a = md5ff(a,b,c,d,M[8],7,1770035416);   d = md5ff(d,a,b,c,M[9],12,-1958414417);
-    c = md5ff(c,d,a,b,M[10],17,-42063);     b = md5ff(b,c,d,a,M[11],22,-1990404162);
-    a = md5ff(a,b,c,d,M[12],7,1804603682);  d = md5ff(d,a,b,c,M[13],12,-40341101);
-    c = md5ff(c,d,a,b,M[14],17,-1502002290);b = md5ff(b,c,d,a,M[15],22,1236535329);
-    a = md5gg(a,b,c,d,M[1],5,-165796510);   d = md5gg(d,a,b,c,M[6],9,-1069501632);
-    c = md5gg(c,d,a,b,M[11],14,643717713);  b = md5gg(b,c,d,a,M[0],20,-373897302);
-    a = md5gg(a,b,c,d,M[5],5,-701558691);   d = md5gg(d,a,b,c,M[10],9,38016083);
-    c = md5gg(c,d,a,b,M[15],14,-660478335); b = md5gg(b,c,d,a,M[4],20,-405537848);
-    a = md5gg(a,b,c,d,M[9],5,568446438);    d = md5gg(d,a,b,c,M[14],9,-1019803690);
-    c = md5gg(c,d,a,b,M[3],14,-187363961);  b = md5gg(b,c,d,a,M[8],20,1163531501);
-    a = md5gg(a,b,c,d,M[13],5,-1444681467); d = md5gg(d,a,b,c,M[2],9,-51403784);
-    c = md5gg(c,d,a,b,M[7],14,1735328473);  b = md5gg(b,c,d,a,M[12],20,-1926607734);
-    a = md5hh(a,b,c,d,M[5],4,-378558);      d = md5hh(d,a,b,c,M[8],11,-2022574463);
-    c = md5hh(c,d,a,b,M[11],16,1839030562); b = md5hh(b,c,d,a,M[14],23,-35309556);
-    a = md5hh(a,b,c,d,M[1],4,-1530992060);  d = md5hh(d,a,b,c,M[4],11,1272893353);
-    c = md5hh(c,d,a,b,M[7],16,-155497632);  b = md5hh(b,c,d,a,M[10],23,-1094730640);
-    a = md5hh(a,b,c,d,M[13],4,681279174);   d = md5hh(d,a,b,c,M[0],11,-358537222);
-    c = md5hh(c,d,a,b,M[3],16,-722521979);  b = md5hh(b,c,d,a,M[6],23,76029189);
-    a = md5hh(a,b,c,d,M[9],4,-640364487);   d = md5hh(d,a,b,c,M[12],11,-421815835);
-    c = md5hh(c,d,a,b,M[15],16,530742520);  b = md5hh(b,c,d,a,M[2],23,-995338651);
-    a = md5ii(a,b,c,d,M[0],6,-198630844);   d = md5ii(d,a,b,c,M[7],10,1126891415);
-    c = md5ii(c,d,a,b,M[14],15,-1416354905);b = md5ii(b,c,d,a,M[5],21,-57434055);
-    a = md5ii(a,b,c,d,M[12],6,1700485571);  d = md5ii(d,a,b,c,M[3],10,-1894986606);
-    c = md5ii(c,d,a,b,M[10],15,-1051523);   b = md5ii(b,c,d,a,M[1],21,-2054922799);
-    a = md5ii(a,b,c,d,M[8],6,1873313359);   d = md5ii(d,a,b,c,M[15],10,-30611744);
-    c = md5ii(c,d,a,b,M[6],15,-1560198380); b = md5ii(b,c,d,a,M[13],21,1309151649);
-    a = md5ii(a,b,c,d,M[4],6,-145523070);   d = md5ii(d,a,b,c,M[11],10,-1120210379);
-    c = md5ii(c,d,a,b,M[2],15,718787259);   b = md5ii(b,c,d,a,M[9],21,-343485551);
-    a = safeAdd(a, aa); b = safeAdd(b, bb); c = safeAdd(c, cc); d = safeAdd(d, dd);
-  }
-
-  return [a, b, c, d].map(n => {
-    const hex = (n >>> 0).toString(16).padStart(8, '0');
-    return hex.match(/../g).reverse().join('');
-  }).join('');
-}

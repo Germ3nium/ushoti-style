@@ -495,7 +495,7 @@ function renderOrderSummary() {
     <div class="summary-line total"><span>Total</span><span>R${total.toFixed(2)}</span></div>
   `;
 
-  // Set hidden PayFast amount field
+  // Hidden amount field, if the page has one
   const amountField = document.getElementById('pf_amount');
   if (amountField) amountField.value = total.toFixed(2);
 

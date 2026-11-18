@@ -53,30 +53,15 @@ async function handleCheckout(e) {
       })
     });
 
-    const pfData = await res.json().catch(() => ({}));
-    if (!res.ok) throw new Error(pfData.error || 'Could not start payment');
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok || !data.payment_url) throw new Error(data.error || 'Could not start payment');
 
-    const form = document.createElement('form');
-    form.method = 'POST';
-    form.action = pfData.payfast_url;
-    delete pfData.payfast_url;
-    // The success page uses this to show the receipt when PayFast sends the customer back
-    try { localStorage.setItem('ushoti_last_order', pfData.order_ref); } catch { /* ignore */ }
-    delete pfData.order_ref;
-
-    Object.entries(pfData).forEach(([key, val]) => {
-      const input = document.createElement('input');
-      input.type = 'hidden';
-      input.name = key;
-      input.value = val;
-      form.appendChild(input);
-    });
-
-    document.body.appendChild(form);
-    form.submit();
+    // The success page uses this to show the receipt when Paystack sends the customer back
+    try { localStorage.setItem('ushoti_last_order', data.order_ref); } catch { /* ignore */ }
+    window.location.href = data.payment_url; // Paystack's secure checkout page
 
   } catch (err) {
-    btn.textContent = 'Pay Securely with PayFast';
+    btn.textContent = 'Pay Securely with Paystack';
     btn.disabled = false;
     alert('Payment error: ' + err.message);
   }

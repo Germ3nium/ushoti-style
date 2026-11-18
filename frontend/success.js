@@ -42,14 +42,14 @@ function renderReceipt(o) {
   $('r-customer').innerHTML = `${escapeHtml(`${o.name_first} ${o.name_last}`)}<br>${escapeHtml(o.email)}`;
   $('r-address').innerHTML = [o.street, o.city, `${o.province} ${o.postal_code}`.trim()]
     .filter(Boolean).map(escapeHtml).join('<br>'); // PAXI orders only have a collection point
-  $('r-payment-ref').textContent = o.payment_id ? `PayFast reference: ${o.payment_id}` : '';
+  $('r-payment-ref').textContent = o.payment_id ? `Paystack reference: ${o.payment_id}` : '';
 
   if (o.status === 'FAILED') {
     $('receipt-label').textContent = 'Payment Not Completed';
     $('receipt-heading').textContent = 'Payment Unsuccessful';
     $('receipt-message').textContent = 'Your payment did not go through, so you have not been charged. Please try checking out again.';
   } else if (o.status === 'PENDING') {
-    $('receipt-message').textContent = 'We are waiting for PayFast to confirm your payment. This page will update in a moment.';
+    $('receipt-message').textContent = 'We are waiting for Paystack to confirm your payment. This page will update in a moment.';
   } else {
     $('receipt-message').textContent = 'Standard delivery takes about 2 weeks from payment. Express orders arrive sooner. Keep this receipt for your records.';
   }
@@ -58,9 +58,15 @@ function renderReceipt(o) {
   $('print-receipt').hidden = false;
 }
 
-// PayFast can send the customer back a few seconds before it confirms the payment with us
+// Paystack can send the customer back a few seconds before its notification reaches us,
+// so ask the backend to check with Paystack directly while the order still shows pending
 async function loadReceipt(ref, attempt = 0) {
   try {
+    await fetch(`${API_BASE}/api/verify-payment`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ order_ref: ref })
+    }).catch(() => { /* the receipt still loads */ });
     const res = await fetch(`${API_BASE}/api/orders/${ref}`);
     if (!res.ok) return;
     const order = await res.json();

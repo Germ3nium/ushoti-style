@@ -548,7 +548,7 @@ function orderDetailHtml(o) {
         <h4>Contact</h4>
         <p>${o.email ? `<a href="mailto:${escapeHtml(o.email)}">${escapeHtml(o.email)}</a>` : '—'}<br/>${o.phone ? `<a href="tel:${escapeHtml(o.phone)}">${escapeHtml(o.phone)}</a>` : ''}</p>
         <h4>Reference</h4>
-        <p class="admin-mono">${escapeHtml(o.order_ref)}${o.payment_id ? `<br/>PayFast: ${escapeHtml(o.payment_id)}` : ''}</p>
+        <p class="admin-mono">${escapeHtml(o.order_ref)}${o.payment_id ? `<br/>Paystack: ${escapeHtml(o.payment_id)}` : ''}</p>
       </div>
     </div>`;
 }
