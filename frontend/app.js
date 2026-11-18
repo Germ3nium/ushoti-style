@@ -26,6 +26,33 @@ const API_BASE = ['localhost', '127.0.0.1', ''].includes(location.hostname)
     ? 'https://ushoti-style-worker-staging.sihlek56.workers.dev'
     : 'https://ushoti-style-worker.sihlek56.workers.dev';
 
+// ── Header Shop menu: tap or click to open; hover opens it on computers (CSS) ──
+// Also underlines Shop and the current category while on a category page.
+function markShopCategory(page) {
+  const name = String(page).split('/').pop().replace(/\.html$/, '');
+  const link = [...document.querySelectorAll('.nav-shop-menu a')]
+    .find(a => a.getAttribute('href').replace(/\.html$/, '') === name);
+  if (!link) return;
+  link.classList.add('active');
+  link.closest('.nav-shop')?.querySelector('.nav-shop-toggle').classList.add('active');
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  const shop = document.querySelector('.nav-shop');
+  if (!shop) return;
+  const toggle = shop.querySelector('.nav-shop-toggle');
+  const setOpen = open => {
+    shop.classList.toggle('open', open);
+    toggle.setAttribute('aria-expanded', String(open));
+  };
+  toggle.addEventListener('click', () => setOpen(!shop.classList.contains('open')));
+  document.addEventListener('click', e => { if (!shop.contains(e.target)) setOpen(false); });
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Escape' && shop.classList.contains('open')) { setOpen(false); toggle.focus(); }
+  });
+  markShopCategory(location.pathname || 'index');
+});
+
 // A strip across the top of every page so nobody mistakes the test copy for the real shop
 if (IS_STAGING) {
   document.addEventListener('DOMContentLoaded', () => {

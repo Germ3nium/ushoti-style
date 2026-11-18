@@ -61,11 +61,21 @@
     </div>
     <div class="nav-links">
       <a href="index.html" class="nav-hide-mobile">Home</a>
-      <a href="sneakers.html">Sneakers</a>
-      <a href="hair.html">Hair</a>
-      <a href="clothes.html" class="nav-wide-only">Clothes</a>
-      <a href="makeup.html" class="nav-wide-only">Makeup</a>
-      <a href="handbags.html" class="nav-wide-only">Handbags</a>
+      <div class="nav-shop">
+        <button type="button" class="nav-shop-toggle" aria-expanded="false" aria-controls="nav-shop-menu">
+          Shop <svg viewBox="0 0 24 24" aria-hidden="true"><polyline points="6 9 12 15 18 9"/></svg>
+        </button>
+        <div class="nav-shop-menu" id="nav-shop-menu">
+          <a href="sneakers.html">Sneakers</a>
+          <a href="kids.html">Kids Sneakers</a>
+          <a href="hair.html">Hair</a>
+          <a href="clothes.html">Clothes</a>
+          <a href="makeup.html">Makeup</a>
+          <a href="handbags.html">Handbags</a>
+          <a href="sale.html" class="nav-shop-extra">On Sale</a>
+          <a href="products.html" class="nav-shop-extra">All Collections</a>
+        </div>
+      </div>
       <a href="cart.html" class="cart-link">
         <svg viewBox="0 0 24 24"><path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 01-8 0"/></svg>
         <span>Cart</span>

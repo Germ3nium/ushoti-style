@@ -186,7 +186,7 @@ function renderProduct(p) {
   const hair = p.category === 'hair';
   document.title = `${p.name} | Ushoti Style`;
   setSearchInfo(p);
-  document.querySelector(`.nav-links a[href="${p.category === 'kids' ? 'sneakers.html' : cat.page}"]`)?.classList.add('active');
+  markShopCategory(cat.page);
 
   pageEl.innerHTML = `
     <div class="pdp-breadcrumb" role="navigation" aria-label="Breadcrumb">

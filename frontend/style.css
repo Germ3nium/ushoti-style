@@ -107,6 +107,54 @@ nav {
   color: var(--gold);
 }
 
+/* ── Shop menu in the header: every category in one drop-down ── */
+.nav-shop { position: relative; }
+
+.nav-shop-toggle {
+  display: flex; align-items: center; gap: 0.35rem;
+  background: none; border: none; cursor: pointer;
+  padding: 0 0 4px; font: inherit;
+  color: var(--text-muted);
+  font-size: 0.8rem; font-weight: 500; letter-spacing: 1.5px; text-transform: uppercase;
+  border-bottom: 1px solid transparent;
+  transition: color 0.2s;
+}
+.nav-shop-toggle svg {
+  width: 12px; height: 12px; fill: none; stroke: currentColor; stroke-width: 2;
+  transition: transform 0.2s;
+}
+.nav-shop-toggle:hover,
+.nav-shop.open .nav-shop-toggle { color: var(--gold); }
+.nav-shop-toggle.active { border-bottom-color: var(--gold); }
+.nav-shop.open .nav-shop-toggle svg { transform: rotate(180deg); }
+
+.nav-shop-menu {
+  display: none;
+  position: absolute; top: calc(100% + 0.9rem); left: 50%; transform: translateX(-50%);
+  min-width: 210px; padding: 0.5rem 0;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.08);
+  z-index: 200;
+}
+/* An invisible bridge so the menu doesn't close while the mouse crosses the gap */
+.nav-shop-menu::before { content: ''; position: absolute; left: 0; right: 0; top: -1rem; height: 1rem; }
+.nav-shop.open .nav-shop-menu { display: block; }
+@media (hover: hover) and (pointer: fine) {
+  .nav-shop:hover .nav-shop-menu { display: block; }
+  .nav-shop:hover .nav-shop-toggle svg { transform: rotate(180deg); }
+}
+
+.nav-links .nav-shop-menu a {
+  display: block; padding: 0.6rem 1.3rem;
+  font-size: 0.78rem; letter-spacing: 1.2px; white-space: nowrap;
+}
+.nav-links .nav-shop-menu a::after { display: none; }
+.nav-links .nav-shop-menu a:hover,
+.nav-links .nav-shop-menu a.active { color: var(--gold); background: var(--bg); }
+/* A line between the categories and On Sale / All Collections */
+.nav-links .nav-shop-menu a:not(.nav-shop-extra) + a.nav-shop-extra { border-top: 1px solid var(--border); margin-top: 0.4rem; padding-top: 0.8rem; }
+
 .cart-link {
   display: flex;
   align-items: center;
@@ -202,6 +250,10 @@ nav {
 body > *:not(#particles-canvas):not(.modal-overlay):not(#toast):not(.sidebar-overlay) {
   position: relative;
   z-index: 1;
+}
+/* The header sits above the page so its Shop menu opens over the content below */
+body > nav:not(#particles-canvas):not(.modal-overlay):not(#toast):not(.sidebar-overlay) {
+  z-index: 100;
 }
 
 /* ── HERO SLIDESHOW ──────────────────────────────────────────── */
@@ -1999,11 +2051,6 @@ footer {
 }
 
 /* ── RESPONSIVE ──────────────────────────────────────────────── */
-/* Clothes, Makeup and Handbags only fit in the top bar on wide screens;
-   smaller screens reach them from the ☰ menu */
-@media (max-width: 1179px) {
-  .nav-links a.nav-wide-only { display: none; }
-}
 
 @media (max-width: 960px) {
   .testimonials-grid { grid-template-columns: 1fr; }
@@ -2035,11 +2082,12 @@ footer {
   .product-info .price { font-size: 0.88rem; }
   .product-badge { top: 0.5rem; left: 0.5rem; }
   .photo-count { right: 0.4rem; bottom: 0.4rem; }
-  /* Phones keep Sneakers and Hair visible so both collections are obvious; the logo goes home */
+  /* Phones keep the Shop menu visible; the logo goes home */
   nav { padding: 0.9rem 16px; }
   .logo { font-size: 1.2rem; letter-spacing: 2px; white-space: nowrap; }
   .nav-links { gap: 0.9rem; }
-  .nav-links a:not(.cart-link) { font-size: 0.68rem; letter-spacing: 1px; }
+  .nav-links a:not(.cart-link), .nav-shop-toggle { font-size: 0.68rem; letter-spacing: 1px; }
+  .nav-shop-menu { left: auto; right: -3rem; transform: none; }
   .nav-links a span { display: none; }
   .newsletter-form { flex-direction: column; }
   .newsletter-form .btn { width: 100%; }
