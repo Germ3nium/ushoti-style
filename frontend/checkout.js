@@ -38,6 +38,7 @@ function payButtonText() {
 
 function syncPaymentChoice() {
   document.getElementById('payment-choice').hidden = paymentMethods !== 'both';
+  document.getElementById('card-soon').hidden = paymentMethods !== 'eft';
   document.getElementById('pay-btn').textContent = payButtonText();
   document.getElementById('pay-note-text').textContent = paymentMethod() === 'eft'
     ? "After you place the order you'll see our bank details. Use your order number as the reference."

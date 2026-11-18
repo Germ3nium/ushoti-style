@@ -2497,3 +2497,9 @@ a.product-card:focus-visible { outline: 2px solid var(--gold); outline-offset: 3
   background: #b3261e; color: #fff; text-align: center;
   font-size: 0.75rem; font-weight: 700; letter-spacing: 1px; padding: 0.4rem 1rem;
 }
+
+/* Checkout, EFT-only: a small note that card payments are on the way */
+.card-soon {
+  text-align: center; margin-top: 0.6rem;
+  font-size: 0.72rem; letter-spacing: 1px; text-transform: uppercase; color: var(--gold);
+}
