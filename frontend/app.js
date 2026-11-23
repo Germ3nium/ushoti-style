@@ -169,20 +169,25 @@ function priceHtml(p) {
     : formatRand(p.price));
 }
 
-// Deals this sneaker can be part of, at the price it sells for now
-// Adult deals only count adult sneakers, kids deals only kids sneakers
+// Deals this product can be part of, at the price it sells for now (hair: any of its lengths).
+// A category's deals only count products from that category.
 function comboDealsFor(p) {
-  return p?.options?.combo && p.category !== 'hair'
-    ? comboDeals.filter(d => (d.group || 'sneakers') === p.category && d.items.includes(p.price))
-    : [];
+  if (!p?.options?.combo) return [];
+  const prices = productVariants(p).length ? productVariants(p).map(v => v.price) : [p.price];
+  return comboDeals.filter(d => (d.group || 'sneakers') === p.category && d.items.some(i => prices.includes(i)));
 }
 
-// e.g. "2 × R1,100 sneakers for R1,500" or "R1,100 + R1,350 sneakers for R1,800"
+const COMBO_GROUP_WORDS = {
+  sneakers: 'sneakers', kids: 'kids sneakers', hair: 'hair', clothes: 'clothing items',
+  makeup: 'makeup items', handbags: 'handbags', waisttrainers: 'waist trainers'
+};
+
+// e.g. "2 × R1,100 sneakers for R1,500" or "R450 + R550 waist trainers for R850"
 function comboDealText(deal) {
   const counts = {};
   deal.items.forEach(p => { counts[p] = (counts[p] || 0) + 1; });
   const parts = Object.entries(counts).map(([p, n]) => `${n > 1 ? `${n} × ` : ''}${formatRand(p)}`);
-  return `${parts.join(' + ')} ${deal.group === 'kids' ? 'kids sneakers' : 'sneakers'} for ${formatRand(deal.price)}`;
+  return `${parts.join(' + ')} ${COMBO_GROUP_WORDS[deal.group || 'sneakers'] || 'items'} for ${formatRand(deal.price)}`;
 }
 
 // Cards get the tag; the product pop-up also lists the deals
@@ -194,7 +199,7 @@ function comboNoteHtml(p, { details = false } = {}) {
 }
 
 function cartComboDiscount() {
-  return ['sneakers', 'kids'].reduce((saving, group) => {
+  return Object.keys(COMBO_GROUP_WORDS).reduce((saving, group) => {
     const units = cart
       .filter(item => {
         const p = productsById[item.id.split('-')[0]];

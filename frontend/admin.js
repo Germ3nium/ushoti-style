@@ -178,11 +178,11 @@ function addDealRow(items = '', price = '', group = 'sneakers') {
   const row = document.createElement('div');
   row.className = 'admin-deal-row';
   row.innerHTML = `
-    <select aria-label="Who the deal is for" data-group>
-      <option value="sneakers"${group === 'kids' ? '' : ' selected'}>Adult</option>
-      <option value="kids"${group === 'kids' ? ' selected' : ''}>Kids</option>
+    <select aria-label="Category the deal is for" data-group>
+      ${Object.entries(CATEGORY_NAMES).map(([key, name]) =>
+        `<option value="${key}"${key === (group || 'sneakers') ? ' selected' : ''}>${name}</option>`).join('')}
     </select>
-    <input type="text" inputmode="numeric" value="${escapeHtml(items)}" placeholder="e.g. 1100, 1100" aria-label="Sneaker prices in the deal" data-items/>
+    <input type="text" inputmode="numeric" value="${escapeHtml(items)}" placeholder="e.g. 1100, 1100" aria-label="Product prices in the deal" data-items/>
     <input type="number" min="1" step="1" value="${escapeHtml(price)}" placeholder="e.g. 1500" aria-label="Deal price in rands" data-price/>
     <button type="button" class="admin-icon-btn" aria-label="Remove deal">&times;</button>`;
   row.querySelector('button').addEventListener('click', () => row.remove());
@@ -834,8 +834,7 @@ function syncCategoryFields() {
   const category = $('pf-category').value;
   const hair = category === 'hair';
   const shoes = SHOE_CATEGORIES.includes(category);
-  // Combo deals are for sneakers only; other categories' sizes and colours are optional
-  $('pf-combo-row').hidden = !shoes;
+  // Every category can be combo eligible; only sneakers must have sizes and colours
   $('pf-sizes-hint').hidden = shoes;
   $('pf-colours-hint').hidden = shoes;
   $('pf-colours-label').textContent = category === 'makeup' ? 'Shades' : 'Colours';
@@ -1024,8 +1023,7 @@ form.addEventListener('submit', async e => {
     options: category !== 'hair'
       ? {
           sizes: $('pf-sizes').value,
-          combo: SHOE_CATEGORIES.includes(category) && $('pf-combo').checked,
-          colours: [...$('pf-colours').querySelectorAll('.admin-colour-row')].map(row => ({
+                    colours: [...$('pf-colours').querySelectorAll('.admin-colour-row')].map(row => ({
             hex:  row.querySelector('input[type=color]').value,
             name: row.querySelector('input[type=text]').value.trim(),
             image: row.querySelector('select').value
@@ -1033,6 +1031,7 @@ form.addEventListener('submit', async e => {
         }
       : { variants: readLengthRows() }
   };
+  payload.options.combo = $('pf-combo').checked;
 
   saveBtn.disabled = true;
   try {

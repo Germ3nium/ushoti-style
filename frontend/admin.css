@@ -475,7 +475,7 @@ td > .admin-pill:first-child,
 .admin-deal-head,
 .admin-deal-row {
   display: grid;
-  grid-template-columns: 90px minmax(0, 2fr) minmax(0, 1fr) 36px;
+  grid-template-columns: 140px minmax(0, 2fr) minmax(0, 1fr) 36px;
   gap: 0.5rem;
   align-items: center;
 }

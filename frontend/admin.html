@@ -195,9 +195,9 @@
           <p class="admin-muted admin-hint">Express shows at checkout once both are filled in. Leave the fee blank to turn it off.</p>
 
           <h3>Combo deals</h3>
-          <p class="admin-muted admin-hint">Each deal lists the prices of the sneakers in it and what they cost together. For example &ldquo;1100, 1100&rdquo; for R1500, or &ldquo;1100, 1350&rdquo; for R1800. Only sneakers ticked &ldquo;Combo eligible&rdquo; on the Products tab count. Choose <strong>Adult</strong> or <strong>Kids</strong> for each deal: a kids deal only counts kids sneakers, and an adult deal only counts adult sneakers. At checkout the customer gets the best mix of deals for what is in their cart.</p>
+          <p class="admin-muted admin-hint">Each deal lists the prices of the items in it and what they cost together. For example &ldquo;1100, 1100&rdquo; for R1500, or &ldquo;450, 450&rdquo; for R800. Choose the <strong>category</strong> for each deal: a deal only counts products from that category that are ticked &ldquo;Combo eligible&rdquo; on the Products tab (so a Kids Sneakers deal never counts adult sneakers). For hair, use the price of the length. At checkout the customer gets the best mix of deals for what is in their cart.</p>
           <div class="form-group">
-            <div class="admin-deal-head" aria-hidden="true"><span>For</span><span>Sneaker prices in the deal</span><span>Deal price (R)</span><span></span></div>
+            <div class="admin-deal-head" aria-hidden="true"><span>Category</span><span>Prices in the deal</span><span>Deal price (R)</span><span></span></div>
             <div id="set-deals" class="admin-colours"></div>
             <button type="button" class="btn btn-ghost admin-btn-sm" id="add-deal-btn">+ Add deal</button>
           </div>
@@ -325,9 +325,6 @@
           <p class="admin-muted admin-hint" id="pf-colours-hint" hidden>Optional: leave this blank if it only comes in one colour.</p>
           <p class="admin-muted admin-hint">Choose the photo for each colour. When a customer taps that colour, the main picture changes to it. Photo numbers match the numbers on the photos above.</p>
         </div>
-        <label class="admin-check" id="pf-combo-row">
-          <input type="checkbox" id="pf-combo"/> Combo eligible &mdash; counts towards the combo deal
-        </label>
       </div>
 
       <div id="pf-hair-fields" hidden>
@@ -341,6 +338,10 @@
           <p class="admin-muted admin-hint">Leave the sale price blank if that length isn't on sale. Any length on sale puts the product on the On Sale page.</p>
         </div>
       </div>
+
+      <label class="admin-check" id="pf-combo-row">
+        <input type="checkbox" id="pf-combo"/> Combo eligible &mdash; counts towards this category's combo deals
+      </label>
 
       <label class="admin-check">
         <input type="checkbox" id="pf-active" checked/> Show in shop

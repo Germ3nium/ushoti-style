@@ -35,9 +35,8 @@ const MAX_SHIPPING_FEE = 10000;
 // EFT orders wait as AWAITING_EFT until the admin sees the money and marks them paid.
 const PAYMENT_METHODS = ['paystack', 'eft', 'both'];
 const BANK_FIELDS = ['account_holder', 'bank', 'account_number', 'branch_code', 'account_type'];
-// Combo deals for sneakers ticked "Combo eligible", e.g. two R1100 pairs for R1500.
-// Each deal is for adult sneakers or kids sneakers, and only counts that kind.
-const COMBO_GROUPS = ['sneakers', 'kids'];
+// Combo deals for products ticked "Combo eligible", e.g. two R1100 sneakers for R1500.
+// Each deal is for one category (its group) and only counts products from that category.
 const MAX_COMBO_DEALS = 20;
 const MAX_COMBO_ITEMS = 6;
 const DEFAULT_BANNER = ['Premium Sneakers', 'Hair Extensions & Wigs', 'Secure Paystack Checkout', 'Nationwide Delivery', 'New Arrivals Weekly'];
@@ -492,15 +491,15 @@ function validateComboDeals(list) {
     const n = i + 1;
     const items = (Array.isArray(raw.items) ? raw.items : String(raw.items || '').split(','))
       .map(v => String(v).trim()).filter(Boolean).map(Number);
-    if (items.length < 2 || items.length > MAX_COMBO_ITEMS) return { error: `Combo deal ${n}: list 2 to ${MAX_COMBO_ITEMS} sneaker prices` };
-    if (!items.every(p => Number.isInteger(p) && p > 0)) return { error: `Combo deal ${n}: sneaker prices must be whole rands, like 1100, 1350` };
+    if (items.length < 2 || items.length > MAX_COMBO_ITEMS) return { error: `Combo deal ${n}: list 2 to ${MAX_COMBO_ITEMS} product prices` };
+    if (!items.every(p => Number.isInteger(p) && p > 0)) return { error: `Combo deal ${n}: product prices must be whole rands, like 1100, 1350` };
     items.sort((a, b) => a - b);
     const price = Number(raw.price);
     if (!(Number.isInteger(price) && price > 0)) return { error: `Combo deal ${n}: add the deal price` };
     if (price >= items.reduce((s, p) => s + p, 0)) return { error: `Combo deal ${n}: the deal price must be less than buying them separately` };
     const key = items.join(',');
-    const group = COMBO_GROUPS.includes(raw.group) ? raw.group : 'sneakers';
-    if (seen.has(`${group}:${key}`)) return { error: `Combo deal ${n}: the same sneakers are already in another deal` };
+    const group = CATEGORIES.includes(raw.group) ? raw.group : 'sneakers';
+    if (seen.has(`${group}:${key}`)) return { error: `Combo deal ${n}: the same prices are already in another deal for that category` };
     seen.add(`${group}:${key}`);
     deals.push({ group, items, price });
   }
@@ -720,15 +719,15 @@ async function priceCartItems(cartItems, env) {
       if (variant) price = variantPrice(variant);
     }
 
-    priced.push({ product_id: p.id, name: p.name, option, price, qty, ...(SHOE_CATEGORIES.includes(p.category) && p.options.combo ? { combo: p.category } : {}) });
+    priced.push({ product_id: p.id, name: p.name, option, price, qty, ...(p.options.combo ? { combo: p.category } : {}) });
   }
   return priced;
 }
 
-// Adult and kids deals are worked out separately, each on its own eligible pairs.
-// items: [{ combo: 'sneakers' | 'kids' | undefined, price, qty }]
+// Each category's deals are worked out separately, on that category's eligible items.
+// items: [{ combo: category | undefined, price, qty }]
 function comboDiscount(items, deals) {
-  return COMBO_GROUPS.reduce((saving, group) => saving + comboSaving(
+  return CATEGORIES.reduce((saving, group) => saving + comboSaving(
     items.filter(i => i.combo === group).flatMap(i => Array(i.qty).fill(i.price)),
     deals.filter(d => (d.group || 'sneakers') === group)
   ), 0);
@@ -1047,6 +1046,7 @@ function validateProduct(body) {
   if (!images.every(isImageUrl)) return { error: 'Photo links must start with https://' };
   const image = images[0];
 
+  const combo = opts.combo === true ? { combo: true } : {};
   let options;
   if (category !== 'hair') { // sneakers, kids sneakers, clothes, makeup and handbags
     const shoes = SHOE_CATEGORIES.includes(category);
@@ -1063,13 +1063,13 @@ function validateProduct(body) {
       .filter(c => c.name && /^#[0-9a-f]{6}$/.test(c.hex));
     if (shoes && !sizes.length)   return { error: 'Add at least one size' };
     if (shoes && !colours.length) return { error: 'Add at least one colour' };
-    options = { sizes, colours, ...(shoes && opts.combo === true ? { combo: true } : {}) };
+    options = { sizes, colours, ...combo };
   } else if (variants) {
-    options = { lengths: variants.map(v => v.length), variants };
+    options = { lengths: variants.map(v => v.length), variants, ...combo };
   } else {
     const lengths = toNumberList(opts.lengths);
     if (!lengths.length) return { error: 'Add at least one length' };
-    options = { lengths };
+    options = { lengths, ...combo };
   }
 
   return {
