@@ -217,6 +217,7 @@ const SLIDE_LINKS = [
   ['clothes.html', 'Clothes page'],
   ['makeup.html', 'Makeup page'],
   ['handbags.html', 'Handbags page'],
+  ['waist-trainers.html', 'Waist Trainers page'],
   ['sale.html', 'On Sale page'],
   ['products.html', 'All products page'],
   ['#collections', 'Collections (home page)'],
@@ -809,7 +810,8 @@ function readLengthRows() {
 
 const CATEGORY_NAMES = {
   sneakers: 'Sneakers', kids: 'Kids Sneakers', hair: 'Hair',
-  clothes: 'Clothes', makeup: 'Makeup', handbags: 'Handbags'
+  clothes: 'Clothes', makeup: 'Makeup', handbags: 'Handbags',
+  waisttrainers: 'Waist Trainers'
 };
 const SHOE_CATEGORIES = ['sneakers', 'kids'];
 // Size suggestions for each category; sizes are optional for clothes, makeup and handbags
@@ -818,7 +820,8 @@ const SIZE_PLACEHOLDERS = {
   kids: '10, 11, 12, 13, 1, 2, 3',
   clothes: 'S, M, L, XL',
   makeup: 'Leave blank if none, e.g. 30ml, 50ml',
-  handbags: 'Leave blank if none'
+  handbags: 'Leave blank if none',
+  waisttrainers: 'S, M, L, XL, 2XL'
 };
 const ADULT_SIZES = [4, 5, 6, 7, 8, 9, 10, 11, 12, 13];
 

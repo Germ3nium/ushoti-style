@@ -49,7 +49,7 @@ const MAX_STORIES = 2;
 const MAX_STORY_FACTS = 4;
 // Home page slideshow. Buttons may only lead to shop pages or home page sections.
 const MAX_SLIDES = 6;
-const SLIDE_LINKS = ['sneakers.html', 'kids.html', 'hair.html', 'clothes.html', 'makeup.html', 'handbags.html', 'sale.html', 'products.html', '#collections', '#featured-section'];
+const SLIDE_LINKS = ['sneakers.html', 'kids.html', 'hair.html', 'clothes.html', 'makeup.html', 'handbags.html', 'waist-trainers.html', 'sale.html', 'products.html', '#collections', '#featured-section'];
 const SLIDE_FOCUS = ['left', 'center', 'right'];
 const DEFAULT_SLIDES = [
   {
@@ -105,9 +105,9 @@ const DEFAULT_STORIES = [
     ],
   },
 ];
-const CATEGORIES   = ['sneakers', 'kids', 'hair', 'clothes', 'makeup', 'handbags'];
-const ID_PREFIXES  = { sneakers: 'snk', kids: 'kid', hair: 'hr', clothes: 'clo', makeup: 'mku', handbags: 'bag' };
-// Sneakers need a size and a colour. Clothes, makeup and handbags have sizes and
+const CATEGORIES   = ['sneakers', 'kids', 'hair', 'clothes', 'makeup', 'handbags', 'waisttrainers'];
+const ID_PREFIXES  = { sneakers: 'snk', kids: 'kid', hair: 'hr', clothes: 'clo', makeup: 'mku', handbags: 'bag', waisttrainers: 'wst' };
+// Sneakers need a size and a colour. Clothes, makeup, handbags and waist trainers have sizes and
 // colours (shades for makeup) only if the admin adds them: sizes are text like S, M, L.
 const SHOE_CATEGORIES = ['sneakers', 'kids'];
 const MAX_TEXT_SIZES = 20;

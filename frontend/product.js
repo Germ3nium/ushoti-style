@@ -9,6 +9,7 @@ const CATEGORY_PAGES = {
   clothes:  { name: 'Clothes', page: 'clothes.html', kicker: 'Fashion' },
   makeup:   { name: 'Makeup', page: 'makeup.html', kicker: 'Beauty' },
   handbags: { name: 'Handbags', page: 'handbags.html', kicker: 'Accessories' },
+  waisttrainers: { name: 'Waist Trainers', page: 'waist-trainers.html', kicker: 'Shapewear' },
 };
 const SHOES = ['sneakers', 'kids'];
 
